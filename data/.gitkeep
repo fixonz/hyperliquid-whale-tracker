@@ -1,0 +1,5 @@
+# This directory stores whale tracking data
+# Files in this directory:
+# - whales.json: Whale wallet information
+# - positions.json: Current position tracking
+

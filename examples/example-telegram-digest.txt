@@ -1,0 +1,59 @@
+📊 5-MINUTE WHALE ACTIVITY DIGEST
+10:40:00 PM
+
+🚨 JUST IN: $12.5 MILLION LIQUIDATED IN PAST 5 MINUTES
+3 positions wiped out
+
+💰 $45.2 MILLION total volume
+
+📈 SUMMARY
+🟢 Longs: 8 ($28.5M)
+🔴 Shorts: 5 ($16.7M)
+⚡ Max Leverage: 15.0x
+⚠️ At Risk: 12
+💥 Liquidated: 3 ($12.5M)
+
+🟢 TOP LONG POSITIONS (8)
+• BTC $8.5M 12x
+  0x527366... | Entry: $112,450.00
+• ETH $6.2M 10x
+  0x41eb58... | Entry: $3,840.00
+• SOL $4.8M 15x
+  0x5b5d51... | Entry: $245.50
+• BTC $3.5M 8x
+  0xb83de0... | Entry: $112,500.00
+• ETH $2.8M 9x
+  0xb317d2... | Entry: $3,845.00
+
+🔴 TOP SHORT POSITIONS (5)
+• BTC $5.5M 12x
+  0x2ea18c... | Entry: $112,600.00
+• ETH $4.2M 10x
+  0x7fdafd... | Entry: $3,850.00
+• SOL $3.5M 15x
+  0x880ac4... | Entry: $246.00
+• BTC $2.0M 8x
+  0xa31211... | Entry: $112,550.00
+• ETH $1.5M 11x
+  0x527366... | Entry: $3,842.00
+
+⚠️ CLOSEST TO LIQUIDATION
+• BTC LONG 3.2% away
+  $8.5M | Liq: $108,851.25
+• ETH SHORT 5.8% away
+  $4.2M | Liq: $4,073.50
+• SOL LONG 7.1% away
+  $4.8M | Liq: $228.08
+• BTC SHORT 8.5% away
+  $5.5M | Liq: $122,165.00
+• ETH LONG 9.2% away
+  $6.2M | Liq: $3,486.72
+
+🔥 LIQUIDATION CLUSTERS
+• BTC $45.8M
+  Range: -2.5% to -5.0%
+• ETH $28.5M
+  Range: -3.0% to -6.0%
+• SOL $13.0M
+  Range: 2.0% to 4.5%
+

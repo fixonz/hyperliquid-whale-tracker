@@ -1,0 +1,14 @@
+{
+  "type": "WHALE_OPEN",
+  "address": "0x1234567890abcdef1234567890abcdef12345678",
+  "asset": "BTC",
+  "side": "LONG",
+  "size": 5.5,
+  "entryPrice": 45000,
+  "leverage": 10,
+  "notionalValue": 247500,
+  "liquidationPrice": 42750,
+  "message": "Whale with +45.23% ROI opened LONG position",
+  "timestamp": 1697000000000
+}
+

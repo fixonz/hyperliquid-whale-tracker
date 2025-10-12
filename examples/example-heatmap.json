@@ -1,0 +1,67 @@
+{
+  "timestamp": 1697000000000,
+  "assets": [
+    {
+      "asset": "BTC",
+      "currentPrice": 45000,
+      "levels": [
+        {
+          "priceLevel": 44100,
+          "percentFromCurrent": -2,
+          "totalNotional": 5000000,
+          "longNotional": 4500000,
+          "shortNotional": 500000,
+          "positionCount": 25
+        },
+        {
+          "priceLevel": 45900,
+          "percentFromCurrent": 2,
+          "totalNotional": 3000000,
+          "longNotional": 500000,
+          "shortNotional": 2500000,
+          "positionCount": 18
+        }
+      ],
+      "clusters": [
+        {
+          "startPrice": 44000,
+          "endPrice": 44500,
+          "startPercent": -2.22,
+          "endPercent": -1.11,
+          "totalNotional": 8500000,
+          "longNotional": 7500000,
+          "shortNotional": 1000000,
+          "positionCount": 45
+        }
+      ],
+      "summary": {
+        "totalLongNotional": 12000000,
+        "totalShortNotional": 8000000,
+        "totalPositions": 125
+      }
+    }
+  ],
+  "globalLevels": [
+    {
+      "percentFromCurrent": -2,
+      "totalNotional": 15000000,
+      "longNotional": 12000000,
+      "shortNotional": 3000000,
+      "assets": [
+        {
+          "asset": "BTC",
+          "notional": 10000000,
+          "longNotional": 8000000,
+          "shortNotional": 2000000
+        },
+        {
+          "asset": "ETH",
+          "notional": 5000000,
+          "longNotional": 4000000,
+          "shortNotional": 1000000
+        }
+      ]
+    }
+  ]
+}
+

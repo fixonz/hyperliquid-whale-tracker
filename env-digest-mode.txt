@@ -1,0 +1,28 @@
+# Copy these settings to your .env file for DIGEST MODE
+
+# Hyperliquid Configuration
+HYPERLIQUID_API_URL=https://api.hyperliquid.xyz
+HYPERLIQUID_WS_URL=wss://api.hyperliquid.xyz/ws
+
+# Monitoring Configuration - DIGEST MODE (5-minute summaries)
+POLL_INTERVAL_MS=60000              # Scan every 60 seconds
+MIN_POSITION_SIZE_USD=1000000       # Only track $1M+ positions
+WHALE_THRESHOLD_USD=1000000         # Only include $1M+ in digests
+
+# Alert Configuration
+ALERT_WEBHOOK_URL=
+DISCORD_WEBHOOK_URL=
+TELEGRAM_BOT_TOKEN=8150022576:AAHnjCfXgev0kwkrsFVI1fQHOLz5KrttvbQ
+TELEGRAM_CHAT_ID=-1003197577020
+
+# Server Configuration
+PORT=3000
+
+# ============================================
+# WHAT CHANGED:
+# - Now sends ONE big message every 5 minutes
+# - Includes: new longs, new shorts, liquidation risks, clusters
+# - Only tracks positions worth $1M+
+# - Scans every 60 seconds (less intensive)
+# ============================================
+

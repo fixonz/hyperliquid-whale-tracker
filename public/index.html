@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hyperliquid Liquidation Monitor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🐋 Hyperliquid Whale Tracker</h1>
+      <div class="explanation-bar">
+        <div class="explanation-text">
+          <strong>What this does:</strong> Tracks 225+ whale wallets and shows you when they open/close big positions or get liquidated. 
+          <span style="color: #00ff41;">Green = Good for bulls</span>, 
+          <span style="color: #ff4444;">Red = Bad for bulls</span>
+        </div>
+      </div>
+      <div class="stats-bar">
+        <div class="stat">
+          <span class="stat-label">Whales Tracked</span>
+          <span class="stat-value" id="whalesTracked">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Active Positions</span>
+          <span class="stat-value" id="positionsCount">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Total Scans</span>
+          <span class="stat-value" id="totalScans">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Status</span>
+          <span class="stat-value status" id="status">Connecting...</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="main-grid">
+      <div class="panel heatmap-panel">
+        <h2>Liquidation Heatmap</h2>
+        <div class="heatmap-controls">
+          <select id="assetSelect">
+            <option value="">All Assets</option>
+          </select>
+          <button onclick="refreshData()">Refresh</button>
+        </div>
+        <div id="heatmapContainer" class="heatmap-container">
+          <div class="loading">Loading heatmap data...</div>
+        </div>
+      </div>
+
+      <div class="panel positions-panel">
+        <h2>Whale Positions</h2>
+        <div class="tabs">
+          <button class="tab active" onclick="showTab('all')">All</button>
+          <button class="tab" onclick="showTab('longs')">Longs</button>
+          <button class="tab" onclick="showTab('shorts')">Shorts</button>
+        </div>
+        <div id="positionsContainer" class="positions-container">
+          <div class="loading">Loading positions...</div>
+        </div>
+      </div>
+
+      <div class="panel alerts-panel">
+        <h2>Recent Alerts</h2>
+        <div id="alertsContainer" class="alerts-container">
+          <div class="loading">Loading alerts...</div>
+        </div>
+      </div>
+
+      <div class="panel whales-panel">
+        <h2>Top Profitable Whales</h2>
+        <div id="whalesContainer" class="whales-container">
+          <div class="loading">Loading whales...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+

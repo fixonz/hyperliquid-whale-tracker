@@ -1,0 +1,66 @@
+================================================================================
+📊 5 MINUTE ACTIVITY DIGEST
+10:35:00 PM - 10:40:00 PM
+================================================================================
+
+ 🚨 JUST IN: $12.5 MILLION LIQUIDATED IN PAST 5 MINUTES 🚨 
+   3 positions wiped out
+
+💰 TOTAL VOLUME: $45.2 MILLION moved in 5 minutes
+
+📈 SUMMARY
+  Longs Opened: 8 ($28.5M)
+  Shorts Opened: 5 ($16.7M)
+  Highest Leverage: 15.0x
+  Positions at Risk: 12
+  ⚡ Liquidated: 3 positions ($12.5M)
+  🔥 At-Risk in Clusters: $87.3M
+
+🟢 NEW LONG POSITIONS (8)
+  BTC | $8.5M | 12x
+    0x527366... | Entry: $112,450.00 | ROI: 45.2%
+  ETH | $6.2M | 10x
+    0x41eb58... | Entry: $3,840.00 | ROI: 32.8%
+  SOL | $4.8M | 15x
+    0x5b5d51... | Entry: $245.50 | ROI: 28.5%
+  BTC | $3.5M | 8x
+    0xb83de0... | Entry: $112,500.00 | ROI: 51.3%
+  ETH | $2.8M | 9x
+    0xb317d2... | Entry: $3,845.00 | ROI: 22.1%
+    ... and 3 more
+
+🔴 NEW SHORT POSITIONS (5)
+  BTC | $5.5M | 12x
+    0x2ea18c... | Entry: $112,600.00 | ROI: 38.7%
+  ETH | $4.2M | 10x
+    0x7fdafd... | Entry: $3,850.00 | ROI: 41.2%
+  SOL | $3.5M | 15x
+    0x880ac4... | Entry: $246.00 | ROI: 29.3%
+  BTC | $2.0M | 8x
+    0xa31211... | Entry: $112,550.00 | ROI: 35.6%
+  ETH | $1.5M | 11x
+    0x527366... | Entry: $3,842.00 | ROI: 45.2%
+
+⚠️  LIQUIDATION RISKS
+  BTC LONG | 3.2% away | $8.5M
+    Current: $112,450.00 → Liq: $108,851.25
+  ETH SHORT | 5.8% away | $4.2M
+    Current: $3,850.00 → Liq: $4,073.50
+  SOL LONG | 7.1% away | $4.8M
+    Current: $245.50 → Liq: $228.08
+  BTC SHORT | 8.5% away | $5.5M
+    Current: $112,600.00 → Liq: $122,165.00
+  ETH LONG | 9.2% away | $6.2M
+    Current: $3,840.00 → Liq: $3,486.72
+    ... and 7 more at risk
+
+🔥 LIQUIDATION CLUSTERS
+  BTC | $45.8M at -2.5% to -5.0%
+    Longs: $38.2M | Shorts: $7.6M
+  ETH | $28.5M at -3.0% to -6.0%
+    Longs: $22.1M | Shorts: $6.4M
+  SOL | $13.0M at 2.0% to 4.5%
+    Longs: $2.8M | Shorts: $10.2M
+
+================================================================================
+
