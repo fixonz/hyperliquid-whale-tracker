@@ -70,8 +70,8 @@ Fill in these settings:
 Scroll down to **"Environment Variables"** section and add:
 
 ```
-TELEGRAM_BOT_TOKEN = 8150022576:AAHnjCfXgev0kwkrsFVI1fQHOLz5KrttvbQ
-TELEGRAM_CHAT_ID = 1003197577020
+TELEGRAM_BOT_TOKEN = YOUR_BOT_TOKEN_HERE
+TELEGRAM_CHAT_ID = YOUR_CHAT_ID_HERE
 NODE_ENV = production
 ```
 
@@ -95,14 +95,14 @@ Once deployed, you'll see your URL at the top:
 **Replace `YOUR_RENDER_URL` with your actual Render URL:**
 
 ```bash
-curl -X POST "https://api.telegram.org/bot8150022576:AAHnjCfXgev0kwkrsFVI1fQHOLz5KrttvbQ/setWebhook" \
+curl -X POST "https://api.telegram.org/botYOUR_BOT_TOKEN/setWebhook" \
   -H "Content-Type: application/json" \
   -d "{\"url\": \"https://YOUR_RENDER_URL/telegram-webhook\", \"allowed_updates\": [\"message\"]}"
 ```
 
 **Example:**
 ```bash
-curl -X POST "https://api.telegram.org/bot8150022576:AAHnjCfXgev0kwkrsFVI1fQHOLz5KrttvbQ/setWebhook" \
+curl -X POST "https://api.telegram.org/botYOUR_BOT_TOKEN/setWebhook" \
   -H "Content-Type: application/json" \
   -d "{\"url\": \"https://hyperliquid-whale-tracker.onrender.com/telegram-webhook\", \"allowed_updates\": [\"message\"]}"
 ```
@@ -115,7 +115,7 @@ curl -X POST "https://api.telegram.org/bot8150022576:AAHnjCfXgev0kwkrsFVI1fQHOLz
 ### 9. Configure Bot Commands
 
 ```bash
-curl -X POST "https://api.telegram.org/bot8150022576:AAHnjCfXgev0kwkrsFVI1fQHOLz5KrttvbQ/setMyCommands" \
+curl -X POST "https://api.telegram.org/botYOUR_BOT_TOKEN/setMyCommands" \
   -H "Content-Type: application/json" \
   -d "{\"commands\": [{\"command\": \"start\", \"description\": \"Start the whale tracker\"}, {\"command\": \"dashboard\", \"description\": \"Open the tracking dashboard\"}, {\"command\": \"status\", \"description\": \"Check monitoring status\"}, {\"command\": \"help\", \"description\": \"Show help information\"}]}"
 ```
@@ -123,7 +123,7 @@ curl -X POST "https://api.telegram.org/bot8150022576:AAHnjCfXgev0kwkrsFVI1fQHOLz
 ### 10. Verify Webhook
 
 ```bash
-curl "https://api.telegram.org/bot8150022576:AAHnjCfXgev0kwkrsFVI1fQHOLz5KrttvbQ/getWebhookInfo"
+curl "https://api.telegram.org/botYOUR_BOT_TOKEN/getWebhookInfo"
 ```
 
 Should return your Render URL.
@@ -198,7 +198,7 @@ To prevent sleep, use a service like **UptimeRobot**:
 ### Webhook Not Working?
 ```bash
 # Check webhook status
-curl "https://api.telegram.org/bot8150022576:AAHnjCfXgev0kwkrsFVI1fQHOLz5KrttvbQ/getWebhookInfo"
+curl "https://api.telegram.org/botYOUR_BOT_TOKEN/getWebhookInfo"
 
 # Should show your Render URL
 ```

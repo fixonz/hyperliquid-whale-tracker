@@ -223,6 +223,41 @@ function renderHeatmap() {
   
   const totalRisk = levels.reduce((sum, level) => sum + (level.totalNotional || 0), 0);
   const totalPositions = levels.reduce((sum, level) => sum + (level.positionCount || 0), 0);
+  const totalLongs = levels.reduce((sum, level) => sum + (level.longNotional || 0), 0);
+  const totalShorts = levels.reduce((sum, level) => sum + (level.shortNotional || 0), 0);
+  
+  // Calculate long/short percentages for pie chart
+  const longPercent = totalRisk > 0 ? (totalLongs / totalRisk * 100) : 50;
+  const shortPercent = 100 - longPercent;
+  
+  // Create cascade chart HTML (waterfall style)
+  const cascadeHTML = levels.slice(0, 15).map((level, index) => {
+    const percent = level.percentFromCurrent || 0;
+    const notional = level.totalNotional || 0;
+    const width = maxNotional > 0 ? (notional / maxNotional) * 100 : 0;
+    const isLong = (level.longNotional || 0) > (level.shortNotional || 0);
+    const longNotional = level.longNotional || 0;
+    const shortNotional = level.shortNotional || 0;
+    const positionCount = level.positionCount || 0;
+    const priceLevel = level.priceLevel || 0;
+    
+    return `
+      <div class="cascade-bar ${isLong ? 'long' : 'short'}" 
+           title="📍 Price: $${priceLevel.toFixed(2)} | ${percent > 0 ? '+' : ''}${percent.toFixed(1)}% move
+💰 Total: $${formatLargeNumber(notional)}
+📈 Longs: $${formatLargeNumber(longNotional)}
+📉 Shorts: $${formatLargeNumber(shortNotional)}
+🎯 ${positionCount} positions">
+        <div class="cascade-label">
+          <span class="cascade-percent">${percent > 0 ? '+' : ''}${percent.toFixed(1)}%</span>
+          <span class="cascade-value">$${formatLargeNumber(notional)}</span>
+        </div>
+        <div class="cascade-bar-fill" style="width: ${Math.max(width, 3)}%">
+          <div class="cascade-bar-inner"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
   
   container.innerHTML = `
     <div class="heatmap-header">
@@ -247,8 +282,48 @@ function renderHeatmap() {
         </div>
       </div>
     </div>
+
+    <!-- Long/Short Distribution Pie Chart -->
+    <div class="distribution-chart">
+      <div class="chart-title">📊 Long vs Short Distribution</div>
+      <div class="pie-chart-container">
+        <div class="pie-chart">
+          <div class="pie-slice long-slice" style="--percentage: ${longPercent}"></div>
+          <div class="pie-chart-center">
+            <div class="pie-chart-label">L/S Ratio</div>
+            <div class="pie-chart-value">${(totalLongs / (totalShorts || 1)).toFixed(2)}x</div>
+          </div>
+        </div>
+        <div class="pie-legend">
+          <div class="pie-legend-item">
+            <div class="pie-legend-color long"></div>
+            <div class="pie-legend-text">
+              <div class="pie-legend-label">📈 Longs</div>
+              <div class="pie-legend-value">$${formatLargeNumber(totalLongs)} (${longPercent.toFixed(1)}%)</div>
+            </div>
+          </div>
+          <div class="pie-legend-item">
+            <div class="pie-legend-color short"></div>
+            <div class="pie-legend-text">
+              <div class="pie-legend-label">📉 Shorts</div>
+              <div class="pie-legend-value">$${formatLargeNumber(totalShorts)} (${shortPercent.toFixed(1)}%)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cascade/Waterfall Chart -->
+    <div class="cascade-chart">
+      <div class="chart-title">💧 Liquidation Cascade (Price Movement Impact)</div>
+      <div class="cascade-container">
+        ${cascadeHTML}
+      </div>
+    </div>
     
+    <!-- Original Bar Heatmap -->
     <div class="heatmap-visualization">
+      <div class="chart-title">🎯 Liquidation Density Map</div>
       <div class="price-axis">
         <div class="axis-label">Price Movement</div>
         <div class="axis-scale">
@@ -262,9 +337,9 @@ function renderHeatmap() {
       <div class="heatmap-container">
         <div class="heatmap-bars">${barsHTML}</div>
         <div class="liquidation-zones">
-          ${levels.map(level => {
+          ${levels.slice(0, 10).map(level => {
             const percent = level.percentFromCurrent || 0;
-            const left = Math.max(0, Math.min(100, 50 + (percent * 2))); // Convert % to position
+            const left = Math.max(0, Math.min(100, 50 + (percent * 2)));
             return `<div class="liquidation-zone" style="left: ${left}%">
               <div class="zone-line"></div>
               <div class="zone-label">${percent > 0 ? '+' : ''}${percent.toFixed(1)}%</div>
@@ -293,15 +368,15 @@ function renderHeatmap() {
         <div class="legend-items">
           <div class="legend-item low-risk">
             <div class="legend-color"></div>
-            <span>🟢 Low Risk</span>
+            <span>🟢 Low Risk (>20%)</span>
           </div>
           <div class="legend-item medium-risk">
             <div class="legend-color"></div>
-            <span>🟡 Medium Risk</span>
+            <span>🟡 Medium (10-20%)</span>
           </div>
           <div class="legend-item high-risk">
             <div class="legend-color"></div>
-            <span>🔴 High Risk</span>
+            <span>🔴 High Risk (<10%)</span>
           </div>
         </div>
       </div>

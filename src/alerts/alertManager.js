@@ -102,6 +102,7 @@ export class AlertManager {
       'LIQUIDATION_RISK': chalk.red,
       'LIQUIDATION': chalk.red.bold,
       'NEW_WHALE_DISCOVERED': chalk.cyan.bold,
+      'NEW_WALLET_DISCOVERED': chalk.blue.bold,
       'LARGE_POSITION': chalk.cyan,
       'CLUSTER_ALERT': chalk.magenta
     };
@@ -274,6 +275,7 @@ export class AlertManager {
       'LIQUIDATION_RISK': '⚠️ Liquidation Risk Alert',
       'LIQUIDATION': '🔥 LIQUIDATION ALERT',
       'NEW_WHALE_DISCOVERED': '🐋 New Whale Discovered',
+      'NEW_WALLET_DISCOVERED': '💼 New Wallet Discovered',
       'LARGE_POSITION': '💰 Large Position Detected',
       'CLUSTER_ALERT': '🔥 Liquidation Cluster Alert'
     };
@@ -290,6 +292,7 @@ export class AlertManager {
       'LIQUIDATION_RISK': 0xFF0000, // Red
       'LIQUIDATION': 0xFF0000, // Red
       'NEW_WHALE_DISCOVERED': 0x00FFFF, // Cyan
+      'NEW_WALLET_DISCOVERED': 0x4169E1, // Royal Blue
       'LARGE_POSITION': 0x00FFFF,  // Cyan
       'CLUSTER_ALERT': 0xFF00FF    // Magenta
     };

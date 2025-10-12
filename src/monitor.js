@@ -128,13 +128,15 @@ class LiquidationMonitor {
             newWhales++;
             console.log(chalk.green(`  + ${address.slice(0, 10)}... | $${(accountValue / 1000).toFixed(0)}K | ${positionCount} pos`));
             
-            // Send alert for new whale discovered (only for first few to avoid spam)
+            // Send alert for new wallet discovered (only for first few to avoid spam)
             if (newWhales <= 5) {
+              const isWhale = accountValue >= 500000; // $500K+
+              const label = isWhale ? '🐋 whale' : '💼 wallet';
               await this.alertManager.sendAlert({
-                type: 'NEW_WHALE_DISCOVERED',
+                type: isWhale ? 'NEW_WHALE_DISCOVERED' : 'NEW_WALLET_DISCOVERED',
                 timestamp: Date.now(),
                 address: address,
-                message: `🐋 New whale discovered: ${address.slice(0, 10)}...${address.slice(-8)} | $${(accountValue / 1000).toFixed(0)}K | ${positionCount} positions`
+                message: `${label} discovered: ${address.slice(0, 10)}...${address.slice(-8)} | $${(accountValue / 1000).toFixed(0)}K | ${positionCount} positions`
               });
             }
           }
