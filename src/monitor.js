@@ -34,6 +34,7 @@ class LiquidationMonitor {
     this.isRunning = false;
     this.lastDiscovery = null;
     this.lastActiveDiscovery = null;
+    this.lastLiquidationCheck = null;
     this.stats = {
       totalScans: 0,
       totalAlertsS: 0,
@@ -207,6 +208,85 @@ class LiquidationMonitor {
   }
 
   /**
+   * Check for liquidations in recent trades
+   */
+  async checkRecentLiquidations() {
+    console.log(chalk.yellow('🔍 Checking for recent liquidations...'));
+    
+    try {
+      const assets = ['BTC', 'ETH', 'SOL', 'ARB'];
+      let liquidationsFound = 0;
+      
+      for (const asset of assets) {
+        try {
+          const response = await this.api.client.post('/info', {
+            type: 'recentTrades',
+            coin: asset
+          });
+          
+          if (response.data && Array.isArray(response.data)) {
+            // Look for large trades that might be liquidations
+            const recentTrades = response.data.filter(trade => {
+              const tradeTime = trade.time || 0;
+              const size = Math.abs(parseFloat(trade.sz || 0));
+              const price = parseFloat(trade.px || 0);
+              const notional = size * price;
+              
+              // Check if this is a recent large trade (potential liquidation)
+              return Date.now() - tradeTime < 5 * 60 * 1000 && // Last 5 minutes
+                     notional > 10000; // Over $10K
+            });
+            
+            if (recentTrades.length > 0) {
+              console.log(chalk.cyan(`  ${asset}: ${recentTrades.length} large trades in last 5min`));
+              
+              // Check if any of these are from tracked addresses
+              for (const trade of recentTrades) {
+                for (const user of trade.users) {
+                  if (this.knownAddresses.has(user)) {
+                    const notional = Math.abs(parseFloat(trade.sz)) * parseFloat(trade.px);
+                    const side = trade.side === 'B' ? 'LONG' : 'SHORT';
+                    
+                    console.log(chalk.red.bold(`🚨 POTENTIAL LIQUIDATION: ${asset} ${side} $${this.formatNumber(notional)}`));
+                    
+                    await this.alertManager.sendAlert({
+                      type: 'LIQUIDATION',
+                      timestamp: Date.now(),
+                      address: user,
+                      asset: asset,
+                      side: side,
+                      notionalValue: notional,
+                      entryPrice: parseFloat(trade.px),
+                      message: `#${asset} Liquidated ${side}: $${this.formatNumber(notional)} at $${parseFloat(trade.px).toFixed(2)}`
+                    });
+                    
+                    liquidationsFound++;
+                  }
+                }
+              }
+            }
+          }
+          
+          // Rate limiting
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+        } catch (error) {
+          console.log(chalk.yellow(`  ⚠️ Error checking ${asset} for liquidations: ${error.message}`));
+        }
+      }
+      
+      if (liquidationsFound > 0) {
+        console.log(chalk.green.bold(`✅ Found ${liquidationsFound} potential liquidations`));
+      } else {
+        console.log(chalk.gray('  No liquidations found in recent trades'));
+      }
+      
+    } catch (error) {
+      console.error(chalk.red('Error checking liquidations:'), error.message);
+    }
+  }
+
+  /**
    * Discover new whale addresses from Hyperliquid ledger
    */
   async discoverNewWhales() {
@@ -329,6 +409,13 @@ class LiquidationMonitor {
         if (!this.lastActiveDiscovery || Date.now() - this.lastActiveDiscovery > tenMinutesAgo) {
           await this.findActiveAddressesFromTrades();
           this.lastActiveDiscovery = Date.now();
+        }
+        
+        // Check for liquidations in recent trades every 2 minutes
+        const twoMinutesAgo = Date.now() - (2 * 60 * 1000);
+        if (!this.lastLiquidationCheck || Date.now() - this.lastLiquidationCheck > twoMinutesAgo) {
+          await this.checkRecentLiquidations();
+          this.lastLiquidationCheck = Date.now();
         }
         
         await this.sleep(this.pollInterval);
@@ -469,7 +556,7 @@ class LiquidationMonitor {
             
             // Update whale data with fills (fetch every few scans to reduce API load)
             const shouldFetchFills = !this.whaleTracker.getWhale(address) || 
-                                   (Date.now() - this.whaleTracker.getWhale(address)?.lastFillsUpdate || 0) > 300000; // 5 minutes
+                                   (Date.now() - this.whaleTracker.getWhale(address)?.lastFillsUpdate || 0) > 60000; // 1 minute for liquidation detection
             
             if (shouldFetchFills) {
               try {
