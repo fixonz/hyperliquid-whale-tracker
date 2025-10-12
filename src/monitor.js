@@ -39,7 +39,14 @@ class LiquidationMonitor {
       totalAlertsS: 0,
       whalesTracked: 0,
       positionsMonitored: 0,
-      lastUpdate: null
+      lastUpdate: null,
+      discoveryStats: {
+        lastDiscovery: null,
+        totalFound: 0,
+        totalAdded: 0,
+        lastFound: 0,
+        lastAdded: 0
+      }
     };
   }
 
@@ -169,6 +176,11 @@ class LiquidationMonitor {
       
       console.log(chalk.green(`📊 Found ${activeAddresses.size} unique active addresses from trades`));
       
+      // Update discovery stats
+      this.stats.discoveryStats.lastDiscovery = Date.now();
+      this.stats.discoveryStats.lastFound = activeAddresses.size;
+      this.stats.discoveryStats.totalFound += activeAddresses.size;
+      
       // Add new addresses to tracking
       let newAddresses = 0;
       for (const address of activeAddresses) {
@@ -177,6 +189,10 @@ class LiquidationMonitor {
           newAddresses++;
         }
       }
+      
+      // Update added stats
+      this.stats.discoveryStats.lastAdded = newAddresses;
+      this.stats.discoveryStats.totalAdded += newAddresses;
       
       if (newAddresses > 0) {
         console.log(chalk.green.bold(`✅ Added ${newAddresses} new active addresses to tracking`));

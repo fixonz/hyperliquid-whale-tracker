@@ -110,6 +110,7 @@ async function fetchInitialData() {
     renderPositions();
     renderAlerts();
     renderWhales();
+    renderDiscoveryStats();
     populateAssetSelect();
   } catch (error) {
     console.error('Error fetching initial data:', error);
@@ -120,6 +121,7 @@ async function fetchInitialData() {
 function updateStats() {
   document.getElementById('whalesTracked').textContent = state.stats.whalesTracked || 0;
   document.getElementById('positionsCount').textContent = state.stats.positionsMonitored || 0;
+  document.getElementById('newAddresses').textContent = state.stats?.discoveryStats?.totalAdded || 0;
   document.getElementById('totalScans').textContent = state.stats.totalScans || 0;
 }
 
@@ -758,6 +760,56 @@ function copyAddress(address) {
       event.target.style.color = '';
     }, 1000);
   });
+}
+
+// Render discovery stats
+function renderDiscoveryStats() {
+  const container = document.getElementById('discoveryLog');
+  const lastDiscoveryEl = document.getElementById('lastDiscovery');
+  const addressesFoundEl = document.getElementById('addressesFound');
+  const newlyAddedEl = document.getElementById('newlyAdded');
+  
+  if (state.stats?.discoveryStats) {
+    const stats = state.stats.discoveryStats;
+    
+    // Update stats
+    if (stats.lastDiscovery) {
+      const lastTime = new Date(stats.lastDiscovery).toLocaleTimeString();
+      lastDiscoveryEl.textContent = lastTime;
+    }
+    
+    addressesFoundEl.textContent = stats.totalFound || 0;
+    newlyAddedEl.textContent = stats.totalAdded || 0;
+    
+    // Create discovery log entries
+    let logHTML = '';
+    
+    if (stats.lastFound > 0) {
+      logHTML += `
+        <div class="discovery-entry info">
+          <span class="discovery-timestamp">${new Date().toLocaleTimeString()}</span>
+          Found ${stats.lastFound} active addresses from recent trades
+        </div>
+      `;
+    }
+    
+    if (stats.lastAdded > 0) {
+      logHTML += `
+        <div class="discovery-entry success">
+          <span class="discovery-timestamp">${new Date().toLocaleTimeString()}</span>
+          Added ${stats.lastAdded} new addresses to tracking
+        </div>
+      `;
+    }
+    
+    if (logHTML) {
+      container.innerHTML = logHTML;
+    } else {
+      container.innerHTML = '<div class="loading">Waiting for discovery data...</div>';
+    }
+  } else {
+    container.innerHTML = '<div class="loading">Waiting for discovery data...</div>';
+  }
 }
 
 // Initialize on load

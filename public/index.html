@@ -33,6 +33,10 @@
           <span class="stat-label">Status</span>
           <span class="stat-value status" id="status">Connecting...</span>
         </div>
+        <div class="stat">
+          <span class="stat-label">New Addresses</span>
+          <span class="stat-value" id="newAddresses">0</span>
+        </div>
       </div>
     </header>
 
@@ -73,6 +77,27 @@
         <h2>Top Profitable Whales</h2>
         <div id="whalesContainer" class="whales-container">
           <div class="loading">Loading whales...</div>
+        </div>
+      </div>
+
+      <div class="panel discovery-panel">
+        <h2>🔍 Active Address Discovery</h2>
+        <div class="discovery-stats">
+          <div class="discovery-stat">
+            <span class="discovery-label">Last Discovery:</span>
+            <span class="discovery-value" id="lastDiscovery">Never</span>
+          </div>
+          <div class="discovery-stat">
+            <span class="discovery-label">Addresses Found:</span>
+            <span class="discovery-value" id="addressesFound">0</span>
+          </div>
+          <div class="discovery-stat">
+            <span class="discovery-label">Newly Added:</span>
+            <span class="discovery-value" id="newlyAdded">0</span>
+          </div>
+        </div>
+        <div class="discovery-log" id="discoveryLog">
+          <div class="loading">Waiting for discovery data...</div>
         </div>
       </div>
     </div>

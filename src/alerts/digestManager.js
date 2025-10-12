@@ -315,11 +315,31 @@ export class DigestManager {
     
     // Simple, short digest to avoid 400 errors
     let message = `📊 <b>${duration.toFixed(0)}-MIN DIGEST</b>\n`;
-    message += `💰 Volume: $${this.formatLargeNumber(totalVolume)}\n`;
-    message += `🟢 Longs: ${this.digest.stats.totalLongsOpened} ($${this.formatLargeNumber(this.digest.stats.totalLongValue)})\n`;
-    message += `🔴 Shorts: ${this.digest.stats.totalShortsOpened} ($${this.formatLargeNumber(this.digest.stats.totalShortValue)})\n`;
-    message += `⚡ Max Leverage: ${this.digest.stats.highestLeverage.toFixed(1)}x\n`;
-    message += `⚠️ At Risk: ${this.digest.liquidationRisks.length} positions\n`;
+    
+    // Only show volume if > 0
+    if (totalVolume > 0) {
+      message += `💰 Volume: $${this.formatLargeNumber(totalVolume)}\n`;
+    }
+    
+    // Only show longs if > 0
+    if (this.digest.stats.totalLongsOpened > 0) {
+      message += `🟢 Longs: ${this.digest.stats.totalLongsOpened} ($${this.formatLargeNumber(this.digest.stats.totalLongValue)})\n`;
+    }
+    
+    // Only show shorts if > 0
+    if (this.digest.stats.totalShortsOpened > 0) {
+      message += `🔴 Shorts: ${this.digest.stats.totalShortsOpened} ($${this.formatLargeNumber(this.digest.stats.totalShortValue)})\n`;
+    }
+    
+    // Only show leverage if > 0
+    if (this.digest.stats.highestLeverage > 0) {
+      message += `⚡ Max Leverage: ${this.digest.stats.highestLeverage.toFixed(1)}x\n`;
+    }
+    
+    // Always show at-risk positions
+    if (this.digest.liquidationRisks.length > 0) {
+      message += `⚠️ At Risk: ${this.digest.liquidationRisks.length} positions\n`;
+    }
 
     // Only show top 3 biggest positions
     const allPositions = [...this.digest.newLongs, ...this.digest.newShorts]
@@ -341,7 +361,10 @@ export class DigestManager {
         .sort((a, b) => a.distancePercent - b.distancePercent)
         .slice(0, 3)
         .forEach(risk => {
+          const wallet = risk.address ? `${risk.address.slice(0, 6)}...${risk.address.slice(-4)}` : 'Unknown';
+          const notional = this.formatLargeNumber(risk.notional || 0);
           message += `• ${risk.asset} ${risk.side} ${risk.distancePercent.toFixed(1)}% away\n`;
+          message += `  ${wallet} | $${notional}\n`;
         });
     }
 
