@@ -152,6 +152,21 @@ function broadcastUpdate() {
 // Broadcast updates every 5 seconds
 setInterval(broadcastUpdate, 5000);
 
+// Keep service awake with external health check every 10 minutes
+setInterval(async () => {
+  try {
+    const externalUrl = process.env.RENDER_EXTERNAL_URL || process.env.VERCEL_URL;
+    if (externalUrl) {
+      const response = await fetch(`${externalUrl}/api/stats`);
+      if (response.ok) {
+        console.log('🔄 Health check: Service is alive');
+      }
+    }
+  } catch (error) {
+    console.log('⚠️ Health check failed:', error.message);
+  }
+}, 10 * 60 * 1000); // Every 10 minutes
+
 // Start server and monitor
 async function startServer() {
   try {
