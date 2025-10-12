@@ -8,13 +8,18 @@ router.post('/telegram-webhook', async (req, res) => {
   try {
     const { message } = req.body;
     
+    console.log('Received webhook:', JSON.stringify(req.body, null, 2));
+    
     if (!message) {
+      console.log('No message in webhook payload');
       return res.status(200).send('OK');
     }
 
     const chatId = message.chat.id;
     const text = message.text;
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    
+    console.log(`Processing message: "${text}" from chat ${chatId}`);
     
     if (!botToken) {
       console.error('TELEGRAM_BOT_TOKEN not configured');
@@ -23,13 +28,19 @@ router.post('/telegram-webhook', async (req, res) => {
 
     // Handle commands
     if (text === '/start') {
+      console.log('Sending welcome message...');
       await sendWelcomeMessage(chatId, botToken);
     } else if (text === '/dashboard') {
+      console.log('Sending dashboard link...');
       await sendDashboardLink(chatId, botToken);
     } else if (text === '/help') {
+      console.log('Sending help message...');
       await sendHelpMessage(chatId, botToken);
     } else if (text === '/status') {
+      console.log('Sending status message...');
       await sendStatusMessage(chatId, botToken);
+    } else {
+      console.log(`Unknown command: ${text}`);
     }
 
     res.status(200).send('OK');
@@ -40,9 +51,7 @@ router.post('/telegram-webhook', async (req, res) => {
 });
 
 async function sendWelcomeMessage(chatId, botToken) {
-  const webAppUrl = process.env.VERCEL_URL ? 
-    `https://${process.env.VERCEL_URL}` : 
-    'http://localhost:3000';
+  const webAppUrl = 'https://hyperliquid-whale-tracker.onrender.com';
   
   const message = `🐋 <b>Welcome to Hyperliquid Whale Tracker!</b>
 
@@ -83,9 +92,7 @@ Click the button below to start tracking!`;
 }
 
 async function sendDashboardLink(chatId, botToken) {
-  const webAppUrl = process.env.VERCEL_URL ? 
-    `https://${process.env.VERCEL_URL}` : 
-    'http://localhost:3000';
+  const webAppUrl = 'https://hyperliquid-whale-tracker.onrender.com';
 
   const message = `🐋 <b>Open Whale Tracker Dashboard</b>
 
@@ -159,11 +166,13 @@ async function sendStatusMessage(chatId, botToken) {
 <b>🚀 Quick Actions:</b>
 Click below to open the dashboard and start tracking!`;
 
+  const webAppUrl = 'https://hyperliquid-whale-tracker.onrender.com';
+    
   const keyboard = {
     inline_keyboard: [
       [{
         text: '🚀 Open Dashboard',
-        web_app: { url: `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/telegram-app.html` }
+        web_app: { url: `${webAppUrl}/telegram-app.html` }
       }]
     ]
   };
