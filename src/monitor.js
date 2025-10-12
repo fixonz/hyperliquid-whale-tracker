@@ -33,6 +33,7 @@ class LiquidationMonitor {
     
     this.isRunning = false;
     this.lastDiscovery = null;
+    this.lastActiveDiscovery = null;
     this.stats = {
       totalScans: 0,
       totalAlertsS: 0,
@@ -86,10 +87,12 @@ class LiquidationMonitor {
     });
     
     for (const fill of recentFills) {
-      // Check if this is a liquidation
+      // Check if this is a liquidation (multiple ways to detect)
       const isLiquidation = fill.isLiquidation || 
                            fill.liquidation || 
-                           (fill.closedPnl < 0 && Math.abs(fill.sz) < 0.001); // Very small size = liquidation
+                           fill.liquidation?.liquidatedUser || // Has liquidation object
+                           (fill.closedPnl < 0 && Math.abs(fill.sz) < 0.001) || // Very small size = liquidation
+                           (fill.closedPnl < 0 && fill.dir && fill.dir.includes('Close')); // Close with loss
       
       if (isLiquidation) {
         const asset = fill.coin || fill.asset || 'UNKNOWN';
@@ -124,6 +127,66 @@ class LiquidationMonitor {
           });
         }
       }
+    }
+  }
+
+  /**
+   * Continuously find active addresses from recent trades
+   */
+  async findActiveAddressesFromTrades() {
+    console.log(chalk.cyan('🔍 Finding active addresses from recent trades...'));
+    
+    try {
+      const assets = ['BTC', 'ETH', 'SOL', 'ARB', 'OP', 'XRP', 'DOGE', 'MATIC'];
+      const activeAddresses = new Set();
+      
+      for (const asset of assets) {
+        try {
+          const response = await this.api.client.post('/info', {
+            type: 'recentTrades',
+            coin: asset
+          });
+          
+          if (response.data && Array.isArray(response.data)) {
+            // Extract unique addresses from trades
+            for (const trade of response.data) {
+              for (const user of trade.users) {
+                if (user && user !== '0x0000000000000000000000000000000000000000') {
+                  activeAddresses.add(user);
+                }
+              }
+            }
+            console.log(chalk.gray(`  ${asset}: ${response.data.length} trades, ${response.data.reduce((acc, t) => acc + t.users.length, 0)} participants`));
+          }
+          
+          // Rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+        } catch (error) {
+          console.log(chalk.yellow(`  ⚠️ Error fetching ${asset} trades: ${error.message}`));
+        }
+      }
+      
+      console.log(chalk.green(`📊 Found ${activeAddresses.size} unique active addresses from trades`));
+      
+      // Add new addresses to tracking
+      let newAddresses = 0;
+      for (const address of activeAddresses) {
+        if (!this.knownAddresses.has(address)) {
+          this.addAddress(address);
+          newAddresses++;
+        }
+      }
+      
+      if (newAddresses > 0) {
+        console.log(chalk.green.bold(`✅ Added ${newAddresses} new active addresses to tracking`));
+      }
+      
+      return Array.from(activeAddresses);
+      
+    } catch (error) {
+      console.error(chalk.red('Error finding active addresses:'), error.message);
+      return [];
     }
   }
 
@@ -243,6 +306,13 @@ class LiquidationMonitor {
         if (!this.lastDiscovery || Date.now() - this.lastDiscovery > this.discoveryInterval) {
           await this.discoverNewWhales();
           this.lastDiscovery = Date.now();
+        }
+        
+        // Find active addresses from recent trades every 10 minutes
+        const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+        if (!this.lastActiveDiscovery || Date.now() - this.lastActiveDiscovery > tenMinutesAgo) {
+          await this.findActiveAddressesFromTrades();
+          this.lastActiveDiscovery = Date.now();
         }
         
         await this.sleep(this.pollInterval);
