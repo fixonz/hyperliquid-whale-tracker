@@ -311,90 +311,41 @@ export class DigestManager {
     }
 
     const duration = (this.digest.endTime - this.digest.startTime) / 60000;
-    let message = `<b>📊 ${duration.toFixed(0)}-MINUTE WHALE ACTIVITY DIGEST</b>\n`;
-    message += `<i>${new Date(this.digest.endTime).toLocaleTimeString()}</i>\n\n`;
-
-    // HEADLINE if liquidations occurred
-    if (this.digest.stats.totalLiquidatedValue > 0) {
-      message += `<b>🚨 JUST IN: $${this.formatLargeNumber(this.digest.stats.totalLiquidatedValue)} LIQUIDATED IN PAST ${duration.toFixed(0)} MINUTES</b>\n`;
-      message += `<i>${this.digest.stats.totalLiquidated} positions wiped out</i>\n\n`;
-    }
-
-    // Total volume headline
     const totalVolume = this.digest.stats.totalLongValue + this.digest.stats.totalShortValue;
-    if (totalVolume > 0) {
-      message += `💰 <b>$${this.formatLargeNumber(totalVolume)}</b> total volume\n\n`;
-    }
-
-    // Summary
-    message += `<b>📈 SUMMARY</b>\n`;
-    message += `🟢 Longs: ${this.digest.stats.totalLongsOpened} ($${this.formatNumber(this.digest.stats.totalLongValue)})\n`;
-    message += `🔴 Shorts: ${this.digest.stats.totalShortsOpened} ($${this.formatNumber(this.digest.stats.totalShortValue)})\n`;
+    
+    // Simple, short digest to avoid 400 errors
+    let message = `📊 <b>${duration.toFixed(0)}-MIN DIGEST</b>\n`;
+    message += `💰 Volume: $${this.formatLargeNumber(totalVolume)}\n`;
+    message += `🟢 Longs: ${this.digest.stats.totalLongsOpened} ($${this.formatLargeNumber(this.digest.stats.totalLongValue)})\n`;
+    message += `🔴 Shorts: ${this.digest.stats.totalShortsOpened} ($${this.formatLargeNumber(this.digest.stats.totalShortValue)})\n`;
     message += `⚡ Max Leverage: ${this.digest.stats.highestLeverage.toFixed(1)}x\n`;
-    message += `⚠️ At Risk: ${this.digest.liquidationRisks.length}\n`;
+    message += `⚠️ At Risk: ${this.digest.liquidationRisks.length} positions\n`;
 
-    // Top Longs
-    if (this.digest.newLongs.length > 0) {
-      message += `\n<b>🟢 TOP LONG POSITIONS (${this.digest.newLongs.length})</b>\n`;
-      this.digest.newLongs
-        .sort((a, b) => b.notional - a.notional)
-        .slice(0, 5)
-        .forEach(pos => {
-          message += `• ${pos.asset} <b>$${this.formatNumber(pos.notional)}</b> ${pos.leverage.toFixed(1)}x\n`;
-          message += `  ${pos.address.slice(0, 8)}... | Entry: $${pos.entryPrice.toFixed(2)}\n`;
-        });
-    }
-
-    // Top Shorts
-    if (this.digest.newShorts.length > 0) {
-      message += `\n<b>🔴 TOP SHORT POSITIONS (${this.digest.newShorts.length})</b>\n`;
-      this.digest.newShorts
-        .sort((a, b) => b.notional - a.notional)
-        .slice(0, 5)
-        .forEach(pos => {
-          message += `• ${pos.asset} <b>$${this.formatNumber(pos.notional)}</b> ${pos.leverage.toFixed(1)}x\n`;
-          message += `  ${pos.address.slice(0, 8)}... | Entry: $${pos.entryPrice.toFixed(2)}\n`;
-        });
-    }
-
-    // Woken Whales
-    if (this.digest.wokenWhales.length > 0) {
-      message += `\n<b>🌅 DORMANT WHALES WAKING UP</b>\n`;
-      this.digest.wokenWhales.slice(0, 5).forEach(woken => {
-        message += `• <b>Dormant for ${woken.daysDormant} days</b>\n`;
-        message += `  ${woken.address.slice(0, 10)}... | ROI: ${woken.whaleRoi.toFixed(1)}%\n`;
-        if (woken.position) {
-          message += `  Opened: ${woken.position.asset} ${woken.position.side} $${this.formatNumber(woken.position.notional)}\n`;
-        }
+    // Only show top 3 biggest positions
+    const allPositions = [...this.digest.newLongs, ...this.digest.newShorts]
+      .sort((a, b) => b.notional - a.notional)
+      .slice(0, 3);
+    
+    if (allPositions.length > 0) {
+      message += `\n<b>🔥 TOP POSITIONS:</b>\n`;
+      allPositions.forEach(pos => {
+        const emoji = pos.side === 'LONG' ? '🟢' : '🔴';
+        message += `${emoji} ${pos.asset} $${this.formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x\n`;
       });
     }
 
-    // Liquidation Risks
+    // Show closest liquidation risks
     if (this.digest.liquidationRisks.length > 0) {
-      message += `\n<b>⚠️ CLOSEST TO LIQUIDATION</b>\n`;
+      message += `\n<b>⚠️ CLOSEST TO LIQ:</b>\n`;
       this.digest.liquidationRisks
         .sort((a, b) => a.distancePercent - b.distancePercent)
-        .slice(0, 5)
-        .forEach(risk => {
-          message += `• ${risk.asset} ${risk.side} <b>${risk.distancePercent.toFixed(1)}%</b> away\n`;
-          message += `  $${this.formatNumber(risk.notional)} | Liq: $${(risk.liquidationPrice || 0).toFixed(2)}\n`;
-        });
-    }
-
-    // Clusters
-    if (this.digest.clusters.length > 0) {
-      message += `\n<b>🔥 LIQUIDATION CLUSTERS</b>\n`;
-      this.digest.clusters
-        .sort((a, b) => b.totalNotional - a.totalNotional)
         .slice(0, 3)
-        .forEach(cluster => {
-          message += `• ${cluster.asset} <b>$${this.formatNumber(cluster.totalNotional)}</b>\n`;
-          message += `  Range: ${cluster.priceRange}\n`;
+        .forEach(risk => {
+          message += `• ${risk.asset} ${risk.side} ${risk.distancePercent.toFixed(1)}% away\n`;
         });
     }
 
     try {
-      // Use the new message splitting function
       await this.alertManager.sendTelegramMessage(message);
     } catch (error) {
       console.error('Error sending Telegram digest:', error.message);

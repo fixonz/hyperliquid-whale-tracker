@@ -73,6 +73,61 @@ class LiquidationMonitor {
   }
 
   /**
+   * Detect liquidations from fills data
+   */
+  async detectLiquidations(address, fills) {
+    if (!fills || fills.length === 0) return;
+    
+    // Get recent fills (last 5 minutes)
+    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+    const recentFills = fills.filter(fill => {
+      const fillTime = fill.time || fill.timestamp || 0;
+      return fillTime > fiveMinutesAgo;
+    });
+    
+    for (const fill of recentFills) {
+      // Check if this is a liquidation
+      const isLiquidation = fill.isLiquidation || 
+                           fill.liquidation || 
+                           (fill.closedPnl < 0 && Math.abs(fill.sz) < 0.001); // Very small size = liquidation
+      
+      if (isLiquidation) {
+        const asset = fill.coin || fill.asset || 'UNKNOWN';
+        const side = (fill.side === 'B' || fill.side === 'BUY') ? 'LONG' : 'SHORT';
+        const size = Math.abs(fill.sz || fill.size || 0);
+        const price = fill.px || fill.price || 0;
+        const notional = size * price;
+        
+        // Only alert for significant liquidations (over $10K)
+        if (notional >= 10000) {
+          console.log(chalk.red.bold(`🚨 LIQUIDATION DETECTED: ${asset} ${side} $${this.formatNumber(notional)}`));
+          
+          await this.alertManager.sendAlert({
+            type: 'LIQUIDATION',
+            timestamp: Date.now(),
+            address: address,
+            asset: asset,
+            side: side,
+            notionalValue: notional,
+            entryPrice: price,
+            message: `#${asset} Liquidated ${side}: $${this.formatNumber(notional)} at $${price.toFixed(2)}`
+          });
+          
+          // Also add to digest
+          this.digestManager.addLiquidation({
+            address: address,
+            asset: asset,
+            side: side,
+            notionalValue: notional,
+            leverage: 1, // We don't have leverage from fills
+            timestamp: Date.now()
+          });
+        }
+      }
+    }
+  }
+
+  /**
    * Discover new whale addresses from Hyperliquid ledger
    */
   async discoverNewWhales() {
@@ -128,17 +183,10 @@ class LiquidationMonitor {
             newWhales++;
             console.log(chalk.green(`  + ${address.slice(0, 10)}... | $${(accountValue / 1000).toFixed(0)}K | ${positionCount} pos`));
             
-            // Send alert for new wallet discovered (only for first few to avoid spam)
-            if (newWhales <= 5) {
-              const isWhale = accountValue >= 500000; // $500K+
-              const label = isWhale ? '🐋 whale' : '💼 wallet';
-              await this.alertManager.sendAlert({
-                type: isWhale ? 'NEW_WHALE_DISCOVERED' : 'NEW_WALLET_DISCOVERED',
-                timestamp: Date.now(),
-                address: address,
-                message: `${label} discovered: ${address.slice(0, 10)}...${address.slice(-8)} | $${(accountValue / 1000).toFixed(0)}K | ${positionCount} positions`
-              });
-            }
+            // Only log to console, don't send Telegram alerts for new wallets
+            const isWhale = accountValue >= 500000; // $500K+
+            const label = isWhale ? '🐋 whale' : '💼 wallet';
+            console.log(chalk.cyan(`  + New ${label} discovered: ${address.slice(0, 10)}...${address.slice(-8)} | $${(accountValue / 1000).toFixed(0)}K | ${positionCount} positions`));
           }
           
           // Rate limiting
@@ -341,6 +389,10 @@ class LiquidationMonitor {
               try {
                 const fills = await this.api.getUserFills(address);
                 await this.whaleTracker.updateWhale(address, userState, fills);
+                
+                // Check for liquidations in recent fills
+                await this.detectLiquidations(address, fills);
+                
                 // Mark when fills were last updated
                 const whale = this.whaleTracker.getWhale(address);
                 if (whale) {

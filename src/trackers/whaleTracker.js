@@ -258,6 +258,26 @@ export class WhaleTracker {
   }
 
   /**
+   * Get top profitable whales
+   */
+  getTopWhales(count = 20) {
+    return Array.from(this.whales.values())
+      .filter(whale => whale.totalPnL > 0) // Only profitable whales
+      .sort((a, b) => b.totalPnL - a.totalPnL)
+      .slice(0, count)
+      .map(whale => ({
+        address: whale.address,
+        totalPnL: whale.totalPnL,
+        roi: whale.roi,
+        marginUsed: whale.marginUsed,
+        activePositions: whale.activePositions,
+        totalTrades: whale.totalTrades,
+        winRate: whale.winRate,
+        lastActive: whale.lastActive
+      }));
+  }
+
+  /**
    * Check if whale is dormant (no activity for 7+ days)
    */
   isDormant(whale) {
