@@ -394,10 +394,8 @@ export class DigestManager {
     }
 
     try {
-      await this.alertManager.sendTelegramAlert({
-        type: 'DIGEST',
-        message: message.substring(0, 4000) // Telegram limit
-      });
+      // Use the new message splitting function
+      await this.alertManager.sendTelegramMessage(message);
     } catch (error) {
       console.error('Error sending Telegram digest:', error.message);
     }

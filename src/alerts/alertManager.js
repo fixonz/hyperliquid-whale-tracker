@@ -194,16 +194,75 @@ export class AlertManager {
 
     try {
       const message = this.formatTelegramMessage(alert);
-      const url = `https://api.telegram.org/bot${this.config.telegramToken}/sendMessage`;
-
-      await axios.post(url, {
-        chat_id: this.config.telegramChatId,
-        text: message,
-        parse_mode: 'HTML'
-      });
+      await this.sendTelegramMessage(message);
     } catch (error) {
       console.error('Error sending Telegram alert:', error.message);
     }
+  }
+
+  /**
+   * Send Telegram message with splitting for long messages
+   */
+  async sendTelegramMessage(text, maxLength = 4000) {
+    if (!this.config.telegramToken || !this.config.telegramChatId) return;
+
+    try {
+      // If message is short enough, send normally
+      if (text.length <= maxLength) {
+        const url = `https://api.telegram.org/bot${this.config.telegramToken}/sendMessage`;
+        await axios.post(url, {
+          chat_id: this.config.telegramChatId,
+          text: text,
+          parse_mode: 'HTML'
+        });
+        return;
+      }
+
+      // Split long message
+      const parts = this.splitMessage(text, maxLength);
+      const url = `https://api.telegram.org/bot${this.config.telegramToken}/sendMessage`;
+
+      for (let i = 0; i < parts.length; i++) {
+        await axios.post(url, {
+          chat_id: this.config.telegramChatId,
+          text: parts[i],
+          parse_mode: 'HTML'
+        });
+        
+        // Small delay between messages to avoid rate limiting
+        if (i < parts.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    } catch (error) {
+      console.error('Error sending Telegram message:', error.message);
+    }
+  }
+
+  /**
+   * Split message into chunks while preserving HTML tags
+   */
+  splitMessage(text, maxLength) {
+    const parts = [];
+    let currentPart = '';
+    const lines = text.split('\n');
+    
+    for (const line of lines) {
+      // If adding this line would exceed the limit, start a new part
+      if (currentPart.length + line.length + 1 > maxLength && currentPart.length > 0) {
+        parts.push(currentPart.trim());
+        currentPart = line;
+      } else {
+        currentPart += (currentPart.length > 0 ? '\n' : '') + line;
+      }
+    }
+    
+    // Add the last part if it has content
+    if (currentPart.trim().length > 0) {
+      parts.push(currentPart.trim());
+    }
+    
+    return parts;
   }
 
   /**
@@ -225,32 +284,43 @@ export class AlertManager {
    * Format message for Telegram
    */
   formatTelegramMessage(alert) {
-    // Special format for liquidation alerts
-    if (alert.type === 'LIQUIDATION') {
-      const sideEmoji = alert.side === 'LONG' ? '🟢' : '🔴';
-      const sideText = alert.side === 'LONG' ? 'Long' : 'Short';
-      const notionalFormatted = this.formatLargeNumber(alert.notional);
+    try {
+      // Special format for liquidation alerts
+      if (alert.type === 'LIQUIDATION') {
+        const sideEmoji = alert.side === 'LONG' ? '🟢' : '🔴';
+        const sideText = alert.side === 'LONG' ? 'Long' : 'Short';
+        const notionalFormatted = this.formatLargeNumber(alert.notional || 0);
+        const liquidationPrice = Number(alert.liquidationPrice || 0);
+        const asset = (alert.asset || 'UNKNOWN').replace(/[<>&]/g, '');
+        const address = (alert.address || '').replace(/[<>&]/g, '');
+        
+        let msg = `${sideEmoji} <a href="https://app.hyperliquid.xyz/explorer/account?address=${address}">${address.slice(0, 10)}...${address.slice(-8)}</a>\n`;
+        msg += `#${asset} Liquidated ${sideText}: $${notionalFormatted} at $${liquidationPrice.toFixed(2)}`;
+        
+        return msg;
+      }
       
-      let msg = `${sideEmoji} <a href="https://app.hyperliquid.xyz/explorer/account?address=${alert.address}">${alert.address.slice(0, 10)}...${alert.address.slice(-8)}</a>\n`;
-      msg += `#${alert.asset} Liquidated ${sideText}: $${notionalFormatted} at $${alert.liquidationPrice.toFixed(2)}`;
+      // Default format for other alerts
+      let msg = `<b>${(this.getAlertTitle(alert) || 'Alert').replace(/[<>&]/g, '')}</b>\n\n`;
       
-      return msg;
-    }
-    
-    // Default format for other alerts
-    let msg = `<b>${this.getAlertTitle(alert)}</b>\n\n`;
-    
-    if (alert.asset) msg += `Asset: <b>${alert.asset}</b>\n`;
-    if (alert.side) msg += `Side: <b>${alert.side}</b>\n`;
-    if (alert.leverage) msg += `Leverage: <b>${alert.leverage.toFixed(2)}x</b>\n`;
-    if (alert.notionalValue) msg += `Notional: <b>$${alert.notionalValue.toLocaleString()}</b>\n`;
-    if (alert.entryPrice) msg += `Entry: $${alert.entryPrice.toFixed(2)}\n`;
-    if (alert.liquidationPrice) msg += `Liquidation: <b>$${alert.liquidationPrice.toFixed(2)}</b>\n`;
-    if (alert.distancePercent) msg += `Distance: ${alert.distancePercent.toFixed(2)}%\n`;
-    if (alert.address) msg += `\nWallet: <code>${alert.address.slice(0, 8)}...${alert.address.slice(-6)}</code>\n`;
-    if (alert.message) msg += `\n${alert.message}`;
+      if (alert.asset) msg += `Asset: <b>${(alert.asset || '').replace(/[<>&]/g, '')}</b>\n`;
+      if (alert.side) msg += `Side: <b>${(alert.side || '').replace(/[<>&]/g, '')}</b>\n`;
+      if (alert.leverage) msg += `Leverage: <b>${Number(alert.leverage || 0).toFixed(2)}x</b>\n`;
+      if (alert.notionalValue) msg += `Notional: <b>$${Number(alert.notionalValue || 0).toLocaleString()}</b>\n`;
+      if (alert.entryPrice) msg += `Entry: $${Number(alert.entryPrice || 0).toFixed(2)}\n`;
+      if (alert.liquidationPrice) msg += `Liquidation: <b>$${Number(alert.liquidationPrice || 0).toFixed(2)}</b>\n`;
+      if (alert.distancePercent) msg += `Distance: ${Number(alert.distancePercent || 0).toFixed(2)}%\n`;
+      if (alert.address) {
+        const cleanAddress = (alert.address || '').replace(/[<>&]/g, '');
+        msg += `\nWallet: <code>${cleanAddress.slice(0, 8)}...${cleanAddress.slice(-6)}</code>\n`;
+      }
+      if (alert.message) msg += `\n${(alert.message || '').replace(/[<>&]/g, '')}`;
 
-    return msg;
+      return msg;
+    } catch (error) {
+      console.error('Error formatting Telegram message:', error);
+      return `Alert: ${(alert.type || 'Unknown').replace(/[<>&]/g, '')}`;
+    }
   }
 
   /**
