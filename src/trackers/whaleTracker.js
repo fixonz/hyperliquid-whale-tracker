@@ -258,12 +258,26 @@ export class WhaleTracker {
   }
 
   /**
-   * Get top profitable whales
+   * Get top whales (by total PnL, including negative)
    */
   getTopWhales(count = 20) {
-    return Array.from(this.whales.values())
-      .filter(whale => whale.totalPnL > 0) // Only profitable whales
-      .sort((a, b) => b.totalPnL - a.totalPnL)
+    console.log(`🔍 getTopWhales called: ${this.whales.size} whales in memory`);
+    
+    if (this.whales.size === 0) {
+      console.log('⚠️ No whales in memory - returning empty array');
+      return [];
+    }
+    
+    const whales = Array.from(this.whales.values());
+    console.log(`📊 Sample whale data:`, whales.slice(0, 2).map(w => ({
+      address: w.address?.slice(0, 8) + '...',
+      totalPnL: w.totalPnL,
+      roi: w.roi,
+      marginUsed: w.marginUsed
+    })));
+    
+    return whales
+      .sort((a, b) => b.totalPnL - a.totalPnL) // Sort by PnL (highest first)
       .slice(0, count)
       .map(whale => ({
         address: whale.address,
