@@ -295,7 +295,8 @@ export class AlertManager {
         const address = (alert.address || '').replace(/[<>&]/g, '');
         
         let msg = `${sideEmoji} <a href="https://app.hyperliquid.xyz/explorer/account?address=${address}">${address.slice(0, 10)}...${address.slice(-8)}</a>\n`;
-        msg += `#${asset} Liquidated ${sideText}: $${notionalFormatted} at $${liquidationPrice.toFixed(2)}`;
+        const price = liquidationPrice || alert.entryPrice || 0;
+        msg += `#${asset} Liquidated ${sideText}: $${notionalFormatted} at $${Number(price).toFixed(2)}`;
         
         return msg;
       }
