@@ -148,10 +148,10 @@ class LiquidationMonitor {
    * Continuously find active addresses from recent trades
    */
   async findActiveAddressesFromTrades() {
-    console.log(chalk.cyan('🔍 Finding active addresses from recent trades...'));
+    console.log(chalk.cyan('🔍 Finding active addresses from recent trades (last 2000 per asset)...'));
     
     try {
-      const assets = ['BTC', 'ETH', 'SOL', 'ARB', 'OP', 'XRP', 'DOGE', 'MATIC'];
+      const assets = ['BTC', 'ETH', 'SOL', 'ARB', 'OP', 'XRP', 'DOGE', 'MATIC', 'AVAX', 'LINK', 'UNI', 'ATOM'];
       const activeAddresses = new Set();
       
       for (const asset of assets) {
@@ -162,15 +162,16 @@ class LiquidationMonitor {
           });
           
           if (response.data && Array.isArray(response.data)) {
-            // Extract unique addresses from trades
-            for (const trade of response.data) {
+            // Extract unique addresses from trades (up to 2000 trades per asset)
+            const tradesToCheck = response.data.slice(0, 2000);
+            for (const trade of tradesToCheck) {
               for (const user of trade.users) {
                 if (user && user !== '0x0000000000000000000000000000000000000000') {
                   activeAddresses.add(user);
                 }
               }
             }
-            console.log(chalk.gray(`  ${asset}: ${response.data.length} trades, ${response.data.reduce((acc, t) => acc + t.users.length, 0)} participants`));
+            console.log(chalk.gray(`  ${asset}: ${tradesToCheck.length} trades, ${tradesToCheck.reduce((acc, t) => acc + t.users.length, 0)} participants`));
           }
           
           // Rate limiting
@@ -678,13 +679,21 @@ class LiquidationMonitor {
   }
 
   /**
-   * Analyze positions for liquidation risk
+   * Analyze positions for liquidation risk and big positions
    */
   async analyzePositions(positions) {
     const analysis = this.liquidationAnalyzer.analyzePositions(positions, this.currentPrices);
 
-    // Add high-risk positions to digest
+    // Check for big positions (100M+) and liquidation risks
     for (const pos of analysis) {
+      // Check for massive positions (100M+)
+      if (pos.notionalValue >= 100000000) { // 100M threshold
+        const whale = this.whaleTracker.getWhale(pos.address);
+        await this.alertManager.sendBigPositionAlert(pos, whale);
+        console.log(chalk.yellow.bold(`🚨 MASSIVE POSITION: ${pos.asset} ${pos.side} $${this.formatNumber(pos.notionalValue)}`));
+      }
+      
+      // Add high-risk positions to digest
       if (pos.isAtRisk && pos.notionalValue >= this.whaleThreshold) {
         this.digestManager.addLiquidationRisk(pos);
       }
@@ -878,7 +887,7 @@ class LiquidationMonitor {
       notionalValue: 50000,
       liquidationPrice: 45000,
       entryPrice: 50000,
-      message: 'TEST: #BTC - LONG\nLiquidated $50K at $45,000\n-- 0x1234...5678'
+      message: '🧪 TEST LIQUIDATION ALERT\n#BTC - LONG\nLiquidated $50K at $45,000\n-- 0x1234...5678'
     };
     
     await this.alertManager.sendAlert(testAlert);

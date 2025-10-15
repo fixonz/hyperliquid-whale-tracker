@@ -17,6 +17,26 @@ export class AlertManager {
   }
 
   /**
+   * Send big position alert (100M+)
+   */
+  async sendBigPositionAlert(position, whale) {
+    const alert = {
+      type: 'BIG_POSITION',
+      timestamp: Date.now(),
+      asset: position.asset,
+      side: position.side,
+      address: position.address,
+      notional: Math.abs(position.size * position.entryPrice),
+      entryPrice: position.entryPrice,
+      leverage: position.leverage,
+      whaleRoi: whale?.roi || 0,
+      message: `🚨 MASSIVE POSITION OPENED: #${position.asset} ${position.side} $${this.formatLargeNumber(Math.abs(position.size * position.entryPrice))}`
+    };
+
+    await this.sendAlert(alert, true); // true = pin this message
+  }
+
+  /**
    * Send immediate liquidation alert
    */
   async sendLiquidationAlert(position, liquidationPrice) {
@@ -39,7 +59,7 @@ export class AlertManager {
   /**
    * Send an alert through all configured channels
    */
-  async sendAlert(alert) {
+  async sendAlert(alert, shouldPin = false) {
     const alertKey = this.getAlertKey(alert);
     
     // Prevent duplicate alerts within 5 minutes
@@ -74,7 +94,7 @@ export class AlertManager {
     }
 
     if (this.config.telegramToken && this.config.telegramChatId) {
-      promises.push(this.sendTelegramAlert(alert));
+      promises.push(this.sendTelegramAlert(alert, shouldPin));
     }
 
     if (this.config.webhookUrl) {
@@ -196,14 +216,45 @@ export class AlertManager {
   /**
    * Send alert to Telegram
    */
-  async sendTelegramAlert(alert) {
+  async sendTelegramAlert(alert, shouldPin = false) {
     if (!this.config.telegramToken || !this.config.telegramChatId) return;
 
     try {
       const message = this.formatTelegramMessage(alert);
-      await this.sendTelegramMessage(message);
+      const messageId = await this.sendTelegramMessage(message);
+      
+      // Pin the message if requested
+      if (shouldPin && messageId) {
+        await this.pinTelegramMessage(messageId);
+      }
     } catch (error) {
       console.error('Error sending Telegram alert:', error.message);
+    }
+  }
+
+  /**
+   * Pin a Telegram message
+   */
+  async pinTelegramMessage(messageId) {
+    if (!this.config.telegramToken || !this.config.telegramChatId) return;
+
+    try {
+      const url = `https://api.telegram.org/bot${this.config.telegramToken}/pinChatMessage`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: this.config.telegramChatId,
+          message_id: messageId,
+          disable_notification: false
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to pin message:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error pinning Telegram message:', error.message);
     }
   }
 
@@ -217,12 +268,12 @@ export class AlertManager {
       // If message is short enough, send normally
       if (text.length <= maxLength) {
         const url = `https://api.telegram.org/bot${this.config.telegramToken}/sendMessage`;
-        await axios.post(url, {
+        const response = await axios.post(url, {
           chat_id: this.config.telegramChatId,
           text: text,
           parse_mode: 'HTML'
         });
-        return;
+        return response.data.result?.message_id;
       }
 
       // Split long message
@@ -293,6 +344,23 @@ export class AlertManager {
   formatTelegramMessage(alert) {
     try {
       // Special format for liquidation alerts
+      // Special formatting for big position alerts
+      if (alert.type === 'BIG_POSITION') {
+        const sideEmoji = alert.side === 'LONG' ? '🟢' : '🔴';
+        const sideText = alert.side === 'LONG' ? 'Long' : 'Short';
+        const notionalFormatted = this.formatLargeNumber(alert.notional || alert.notionalValue || 0);
+        const asset = (alert.asset || 'UNKNOWN').replace(/[<>&]/g, '');
+        const address = (alert.address || '').replace(/[<>&]/g, '');
+        
+        let msg = `🚨 MASSIVE POSITION OPENED\n`;
+        msg += `${sideEmoji} #${asset} - ${sideText}\n`;
+        msg += `Size: $${notionalFormatted} at $${Number(alert.entryPrice || 0).toLocaleString()}\n`;
+        msg += `Leverage: ${Number(alert.leverage || 0).toFixed(1)}x\n`;
+        msg += `-- <a href="https://app.hyperliquid.xyz/explorer/account?address=${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
+        
+        return msg;
+      }
+      
       if (alert.type === 'LIQUIDATION') {
         const sideEmoji = alert.side === 'LONG' ? '🟢' : '🔴';
         const sideText = alert.side === 'LONG' ? 'Long' : 'Short';
@@ -302,7 +370,9 @@ export class AlertManager {
         const address = (alert.address || '').replace(/[<>&]/g, '');
         
         const price = liquidationPrice || alert.entryPrice || 0;
-        let msg = `${sideEmoji} #${asset} - ${sideText}\n`;
+        const isTest = alert.message && alert.message.includes('TEST');
+        let msg = isTest ? `🧪 TEST LIQUIDATION ALERT\n` : '';
+        msg += `${sideEmoji} #${asset} - ${sideText}\n`;
         msg += `Liquidated $${notionalFormatted} at $${Number(price).toLocaleString()}\n`;
         msg += `-- <a href="https://app.hyperliquid.xyz/explorer/account?address=${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
         
@@ -353,6 +423,7 @@ export class AlertManager {
       'WHALE_CLOSE': '🐋 Whale Position Closed',
       'LIQUIDATION_RISK': '⚠️ Liquidation Risk Alert',
       'LIQUIDATION': '🔥 LIQUIDATION ALERT',
+      'BIG_POSITION': '🚨 MASSIVE POSITION OPENED',
       'NEW_WHALE_DISCOVERED': '🐋 New Whale Discovered',
       'NEW_WALLET_DISCOVERED': '💼 New Wallet Discovered',
       'LARGE_POSITION': '💰 Large Position Detected',
