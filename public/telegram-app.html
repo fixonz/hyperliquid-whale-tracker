@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>🐋 Hyperliquid Whale Tracker</title>
   <link rel="stylesheet" href="telegram-styles.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -11,97 +11,172 @@
   <div class="telegram-container">
     <!-- Telegram Header -->
     <div class="telegram-header">
-      <h1>🐋 Whale Tracker</h1>
-      <div class="status-indicator" id="statusIndicator">
-        <span class="status-dot"></span>
-        <span>Connecting...</span>
+      <div class="header-content">
+        <h1>🐋 Whale Tracker</h1>
+        <div class="status-indicator" id="statusIndicator">
+          <span class="status-dot"></span>
+          <span class="status-text" id="statusText">Connecting...</span>
+        </div>
       </div>
     </div>
 
-    <!-- Quick Stats -->
-    <div class="quick-stats">
+    <!-- Quick Stats Cards -->
+    <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-number" id="whalesCount">225</div>
-        <div class="stat-label">Whales</div>
+        <div class="stat-icon">🐋</div>
+        <div class="stat-info">
+          <div class="stat-value" id="whalesCount">0</div>
+          <div class="stat-label">Whales</div>
+        </div>
       </div>
       <div class="stat-card">
-        <div class="stat-number" id="positionsCount">4</div>
-        <div class="stat-label">Positions</div>
+        <div class="stat-icon">💰</div>
+        <div class="stat-info">
+          <div class="stat-value" id="totalVolume">$0</div>
+          <div class="stat-label">Volume</div>
+        </div>
       </div>
       <div class="stat-card">
-        <div class="stat-number" id="riskValue">$8.6M</div>
-        <div class="stat-label">At Risk</div>
+        <div class="stat-icon">📊</div>
+        <div class="stat-info">
+          <div class="stat-value" id="positionsCount">0</div>
+          <div class="stat-label">Positions</div>
+        </div>
       </div>
-    </div>
-
-    <!-- Alert Feed -->
-    <div class="alerts-section">
-      <h2>🚨 Live Alerts</h2>
-      <div id="alertsFeed" class="alerts-feed">
-        <div class="alert-item">
-          <div class="alert-icon">⏳</div>
-          <div class="alert-content">
-            <div class="alert-title">Waiting for alerts...</div>
-            <div class="alert-subtitle">Monitoring 225 whale wallets</div>
-          </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔥</div>
+        <div class="stat-info">
+          <div class="stat-value" id="liquidationsCount">0</div>
+          <div class="stat-label">Liquidations</div>
         </div>
       </div>
     </div>
 
-    <!-- Liquidation Heatmap -->
-    <div class="heatmap-section">
-      <h2>🔥 Liquidation Heatmap</h2>
-      <div class="heatmap-mobile" id="heatmapMobile">
-        <div class="heatmap-explanation">
-          <div class="explanation-card">
-            <div class="explanation-icon">📊</div>
-            <div class="explanation-text">
-              <strong>Red bars:</strong> Longs liquidating (bullish)<br>
-              <strong>Green bars:</strong> Shorts liquidating (bearish)
-            </div>
-          </div>
-        </div>
-        <div class="heatmap-bars" id="heatmapBars">
-          <!-- Heatmap bars will be generated here -->
-        </div>
-      </div>
-    </div>
-
-    <!-- Recent Positions -->
-    <div class="positions-section">
-      <h2>🐋 Recent Whale Activity</h2>
-      <div id="positionsFeed" class="positions-feed">
-        <div class="position-item">
-          <div class="position-header">
-            <span class="position-asset">#HYPE</span>
-            <span class="position-side long">LONG</span>
-            <span class="position-value">$2.56M</span>
-          </div>
-          <div class="position-details">
-            <span class="position-leverage">10.0x</span>
-            <span class="position-distance">5.5% to liquidation</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Bottom Navigation -->
-    <div class="bottom-nav">
-      <button class="nav-button active" onclick="showSection('alerts')">
-        <span class="nav-icon">🚨</span>
-        <span class="nav-label">Alerts</span>
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="heatmap">
+        <span class="tab-icon">🔥</span>
+        <span class="tab-label">Heatmap</span>
       </button>
-      <button class="nav-button" onclick="showSection('heatmap')">
-        <span class="nav-icon">🔥</span>
-        <span class="nav-label">Heatmap</span>
+      <button class="tab-btn" data-tab="positions">
+        <span class="tab-icon">📊</span>
+        <span class="tab-label">Positions</span>
       </button>
-      <button class="nav-button" onclick="showSection('whales')">
-        <span class="nav-icon">🐋</span>
-        <span class="nav-label">Whales</span>
+      <button class="tab-btn" data-tab="alerts">
+        <span class="tab-icon">🚨</span>
+        <span class="tab-label">Alerts</span>
       </button>
+      <button class="tab-btn" data-tab="whales">
+        <span class="tab-icon">🐋</span>
+        <span class="tab-label">Whales</span>
+      </button>
+    </div>
+
+    <!-- Content Areas -->
+    <div class="content-area">
+      <!-- Heatmap Tab -->
+      <div class="tab-content active" id="heatmap-tab">
+        <div class="section-header">
+          <h2>🔥 Liquidation Heatmap</h2>
+          <div class="refresh-btn" onclick="refreshData()">
+            <span>🔄</span>
+          </div>
+        </div>
+        
+        <div class="heatmap-controls">
+          <select id="assetSelect" class="mobile-select">
+            <option value="">All Assets</option>
+          </select>
+        </div>
+        
+        <div id="heatmapContainer" class="heatmap-container">
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading heatmap data...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Positions Tab -->
+      <div class="tab-content" id="positions-tab">
+        <div class="section-header">
+          <h2>📊 Whale Positions</h2>
+          <div class="filter-tabs">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="longs">Longs</button>
+            <button class="filter-btn" data-filter="shorts">Shorts</button>
+          </div>
+        </div>
+        
+        <div id="positionsContainer" class="positions-container">
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading positions...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Alerts Tab -->
+      <div class="tab-content" id="alerts-tab">
+        <div class="section-header">
+          <h2>🚨 Live Alerts</h2>
+          <div class="alert-indicator" id="alertIndicator">
+            <span class="alert-dot"></span>
+            <span>Live</span>
+          </div>
+        </div>
+        
+        <div id="alertsContainer" class="alerts-container">
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading alerts...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Whales Tab -->
+      <div class="tab-content" id="whales-tab">
+        <div class="section-header">
+          <h2>🐋 Top Whales</h2>
+          <div class="sort-options">
+            <select id="whaleSort" class="mobile-select">
+              <option value="pnl">By PnL</option>
+              <option value="roi">By ROI</option>
+              <option value="risk">By Risk</option>
+            </select>
+          </div>
+        </div>
+        
+        <div id="whalesContainer" class="whales-container">
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading whale data...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="bottom-actions">
+      <button class="action-btn primary" onclick="openInBrowser()">
+        <span class="btn-icon">🌐</span>
+        <span class="btn-text">Open in Browser</span>
+      </button>
+      <button class="action-btn secondary" onclick="shareDashboard()">
+        <span class="btn-icon">📤</span>
+        <span class="btn-text">Share</span>
+      </button>
+    </div>
+
+    <!-- Pull to Refresh Indicator -->
+    <div class="pull-refresh" id="pullRefresh">
+      <div class="refresh-content">
+        <div class="refresh-icon">🔄</div>
+        <div class="refresh-text">Pull to refresh</div>
+      </div>
     </div>
   </div>
 
-  <script src="telegram-app-static.js"></script>
+  <script src="telegram-app.js"></script>
 </body>
 </html>

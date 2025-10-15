@@ -10,7 +10,9 @@ const state = {
   positions: [],
   alerts: [],
   whales: [],
-  prices: {}
+  prices: {},
+  hyperlensData: {},
+  enhancedAlerts: []
 };
 
 // Initialize
@@ -94,14 +96,16 @@ function handleWebSocketMessage(message) {
 // Fetch initial data
 async function fetchInitialData() {
   try {
-    const [stats, heatmap, positions, alerts, whales, prices, digestStats] = await Promise.all([
+    const [stats, heatmap, positions, alerts, whales, prices, digestStats, hyperlensData, enhancedAlerts] = await Promise.all([
       fetch('/api/stats').then(r => r.json()),
       fetch('/api/heatmap').then(r => r.json()),
       fetch('/api/positions').then(r => r.json()),
       fetch('/api/alerts').then(r => r.json()),
       fetch('/api/whales').then(r => r.json()),
       fetch('/api/prices').then(r => r.json()),
-      fetch('/api/digest-stats').then(r => r.json())
+      fetch('/api/digest-stats').then(r => r.json()),
+      fetch('/api/hyperlens-data').then(r => r.json()).catch(() => ({})),
+      fetch('/api/enhanced-alerts').then(r => r.json()).catch(() => [])
     ]);
     
     state.stats = stats;
@@ -111,6 +115,8 @@ async function fetchInitialData() {
     state.whales = whales;
     state.prices = prices;
     state.digestStats = digestStats;
+    state.hyperlensData = hyperlensData;
+    state.enhancedAlerts = enhancedAlerts;
     
     updateStats();
     renderHeatmap();
@@ -120,6 +126,7 @@ async function fetchInitialData() {
     renderDiscoveryStats();
     renderDigestStats();
     populateAssetSelect();
+    renderHyperlensInsights();
   } catch (error) {
     console.error('Error fetching initial data:', error);
   }
@@ -484,33 +491,156 @@ function renderPositions() {
 function renderAlerts() {
   const container = document.getElementById('alertsContainer');
   
-  if (state.alerts.length === 0) {
+  // Combine regular alerts with enhanced alerts
+  const allAlerts = [...state.alerts, ...state.enhancedAlerts];
+  
+  if (allAlerts.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <div style="margin-bottom: 20px;">
           <h3>🚨 Live Alerts</h3>
-          <p>Real-time liquidation and whale activity alerts</p>
+          <p>Real-time liquidation and whale activity alerts with Hyperlens.io data</p>
         </div>
         <div style="color: #888; font-size: 14px;">
-          <p>📊 <strong>Alert Types:</strong></p>
+          <p>📊 <strong>Enhanced Alert Types:</strong></p>
           <ul style="text-align: left; margin: 10px 0;">
-            <li>🔥 <strong>Liquidations</strong> - Immediate alerts when positions get liquidated</li>
-            <li>🐋 <strong>Whale Activity</strong> - Large position opens/closes</li>
-            <li>⚠️ <strong>Risk Alerts</strong> - Positions near liquidation</li>
-            <li>💰 <strong>Large Positions</strong> - Million+ dollar trades</li>
+            <li>🔥 <strong>Enhanced Liquidations</strong> - With Hyperlens.io liquidation history</li>
+            <li>🌊 <strong>Cascade Warnings</strong> - Multiple liquidation alerts</li>
+            <li>🐋 <strong>Whale Patterns</strong> - Behavioral pattern detection</li>
+            <li>⚡ <strong>Volatility Spikes</strong> - Market volatility alerts</li>
+            <li>🎯 <strong>Liquidation Clusters</strong> - Risk concentration alerts</li>
+            <li>💡 <strong>Hyperlens Insights</strong> - Advanced market intelligence</li>
           </ul>
-          <p style="margin-top: 15px;">⏳ <em>Waiting for alerts...</em></p>
+          <p style="margin-top: 15px;">⏳ <em>Waiting for enhanced alerts...</em></p>
         </div>
       </div>
     `;
     return;
   }
   
-  const html = state.alerts.reverse().slice(0, 20).map(alert => {
+  const html = allAlerts.reverse().slice(0, 20).map(alert => {
     const timestamp = new Date(alert.timestamp).toLocaleTimeString();
     const timeAgo = getTimeAgo(alert.timestamp);
     
-    // Special formatting for liquidation alerts
+    // Special formatting for enhanced liquidation alerts
+    if (alert.type === 'ENHANCED_LIQUIDATION') {
+      const sideEmoji = alert.side === 'LONG' ? '🟢' : '🔴';
+      const sideText = alert.side === 'LONG' ? 'Long' : 'Short';
+      const notionalFormatted = formatLargeNumber(alert.notional || alert.notionalValue || 0);
+      const severity = alert.severity || 'medium';
+      const severityEmoji = {
+        'massive': '🚨💥',
+        'large': '🔥',
+        'medium': '⚡',
+        'small': '💥'
+      };
+      const isRepeat = alert.isRepeatLiquidation || false;
+      
+      return `
+        <div class="alert-card liquidation-alert enhanced-alert">
+          <div class="alert-header liquidation-header">
+            <div class="alert-title-section">
+              <span class="alert-icon">${severityEmoji[severity] || '🔥'}</span>
+              <span class="alert-title">${severity.toUpperCase()} LIQUIDATION</span>
+              ${isRepeat ? '<span style="color: #ffaa00; font-size: 12px; margin-left: 8px;">⚠️ REPEAT</span>' : ''}
+            </div>
+            <span class="alert-time">${timeAgo}</span>
+          </div>
+          <div class="liquidation-content">
+            <div class="liquidation-main">
+              <span class="liquidation-wallet">
+                <span class="wallet-link" onclick="copyAddress('${alert.address}')" title="Click to copy">
+                  ${alert.address.slice(0, 10)}...${alert.address.slice(-8)}
+                </span>
+                <a href="https://app.hyperliquid.xyz/explorer/account?address=${alert.address}" target="_blank" class="explorer-link" title="View on Hyperliquid">🔗</a>
+              </span>
+              <div class="liquidation-details">
+                <span class="asset-tag">#${alert.asset}</span>
+                <span class="side-indicator ${alert.side.toLowerCase()}">
+                  ${sideEmoji} ${sideText} Liquidated
+                </span>
+                <span class="notional-amount">$${notionalFormatted}</span>
+                <span class="liquidation-price">at $${alert.liquidationPrice.toFixed(2)}</span>
+              </div>
+            </div>
+            <div class="liquidation-meta">
+              ${alert.entryPrice ? `<span>Entry: $${alert.entryPrice.toFixed(2)}</span>` : ''}
+              ${alert.leverage ? `<span>${alert.leverage.toFixed(1)}x</span>` : ''}
+              ${alert.pnl ? `<span class="${alert.pnl >= 0 ? 'positive' : 'negative'}">PnL: ${alert.pnl >= 0 ? '+' : ''}${alert.pnl.toFixed(2)}%</span>` : ''}
+              ${alert.liquidationCount ? `<span>Total Liq: ${alert.liquidationCount}</span>` : ''}
+            </div>
+            <div style="margin-top: 8px; padding: 8px; background: rgba(0, 255, 65, 0.1); border-radius: 4px; font-size: 12px; color: #00ff41;">
+              💡 Enhanced with Hyperlens.io data
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Special formatting for cascade warnings
+    if (alert.type === 'CASCADE_WARNING') {
+      return `
+        <div class="alert-card cascade-warning">
+          <div class="alert-header" style="background: rgba(255, 68, 68, 0.2);">
+            <div class="alert-title-section">
+              <span class="alert-icon">🌊</span>
+              <span class="alert-title">LIQUIDATION CASCADE WARNING</span>
+            </div>
+            <span class="alert-time">${timeAgo}</span>
+          </div>
+          <div class="alert-details">
+            <div class="detail-row">
+              <span class="detail-label">Estimated Impact:</span>
+              <span class="detail-value">$${formatLargeNumber(alert.estimatedImpact)}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Affected Assets:</span>
+              <span class="detail-value">${alert.affectedAssets.join(', ')}</span>
+            </div>
+            <div style="margin-top: 8px; padding: 8px; background: rgba(255, 68, 68, 0.1); border-radius: 4px; font-size: 12px; color: #ff4444;">
+              ⚠️ Multiple liquidations expected - Market impact incoming
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Special formatting for whale patterns
+    if (alert.type === 'WHALE_PATTERN') {
+      return `
+        <div class="alert-card whale-pattern">
+          <div class="alert-header" style="background: rgba(0, 255, 65, 0.2);">
+            <div class="alert-title-section">
+              <span class="alert-icon">🐋</span>
+              <span class="alert-title">WHALE PATTERN DETECTED</span>
+            </div>
+            <span class="alert-time">${timeAgo}</span>
+          </div>
+          <div class="alert-details">
+            <div class="detail-row">
+              <span class="detail-label">Pattern:</span>
+              <span class="detail-value">${alert.pattern.type.replace(/_/g, ' ').toUpperCase()}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">ROI:</span>
+              <span class="detail-value ${alert.whaleStats.roi >= 0 ? 'positive' : 'negative'}">
+                ${alert.whaleStats.roi >= 0 ? '+' : ''}${alert.whaleStats.roi.toFixed(2)}%
+              </span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Wallet:</span>
+              <span class="detail-value">
+                <span class="wallet-link" onclick="copyAddress('${alert.address}')" title="Click to copy">
+                  ${alert.address.slice(0, 10)}...${alert.address.slice(-8)}
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Special formatting for regular liquidation alerts
     if (alert.type === 'LIQUIDATION') {
       const sideEmoji = alert.side === 'LONG' ? '🟢' : '🔴';
       const sideText = alert.side === 'LONG' ? 'Long' : 'Short';
@@ -875,6 +1005,44 @@ function scrollToSection(sectionId) {
       block: 'start'
     });
   }
+}
+
+// Render Hyperlens insights
+function renderHyperlensInsights() {
+  if (!state.hyperlensData || Object.keys(state.hyperlensData).length === 0) {
+    return;
+  }
+  
+  // Add Hyperlens insights to stats if available
+  if (state.hyperlensData.globalStats) {
+    const globalStats = state.hyperlensData.globalStats;
+    // Update stats with Hyperlens data
+    if (globalStats.totalLiquidations) {
+      document.getElementById('totalLiquidations').textContent = globalStats.totalLiquidations;
+    }
+    if (globalStats.totalVolume) {
+      document.getElementById('liquidationVolume').textContent = `$${formatLargeNumber(globalStats.totalVolume)}`;
+    }
+  }
+}
+
+// Enhanced alert icons
+function getAlertIcon(type) {
+  const icons = {
+    'WHALE_OPEN': '🐋',
+    'WHALE_CLOSE': '🐋',
+    'LIQUIDATION_RISK': '⚠️',
+    'LARGE_POSITION': '💰',
+    'CLUSTER_ALERT': '🔥',
+    'ENHANCED_LIQUIDATION': '🔥',
+    'CASCADE_WARNING': '🌊',
+    'WHALE_PATTERN': '🐋',
+    'VOLATILITY_SPIKE': '⚡',
+    'LIQUIDATION_CLUSTER': '🎯',
+    'ENHANCED_RISK': '⚠️',
+    'HYPERLENS_INSIGHT': '💡'
+  };
+  return icons[type] || '📢';
 }
 
 // Initialize on load

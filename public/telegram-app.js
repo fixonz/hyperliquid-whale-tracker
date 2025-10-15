@@ -1,9 +1,11 @@
-// Telegram WebApp Integration
+// Telegram WebApp Integration with Hyperlens.io
 class TelegramWhaleTracker {
   constructor() {
     this.tg = window.Telegram?.WebApp;
     this.currentSection = 'alerts';
     this.ws = null;
+    this.hyperlensAPI = null;
+    this.currentTab = 'heatmap';
     this.init();
   }
 
@@ -19,11 +21,19 @@ class TelegramWhaleTracker {
       document.body.style.setProperty('--tg-theme-secondary-bg-color', this.tg.themeParams.secondary_bg_color || 'rgba(0, 0, 0, 0.3)');
       document.body.style.setProperty('--tg-theme-hint-color', this.tg.themeParams.hint_color || '#888');
       document.body.style.setProperty('--tg-theme-button-color', this.tg.themeParams.button_color || '#00ff41');
+      
+      // Set up Telegram WebApp features
+      this.tg.MainButton.setText('Open Full Dashboard');
+      this.tg.MainButton.onClick(() => {
+        this.tg.openLink('https://app.hyperliquid.xyz');
+      });
+      this.tg.MainButton.show();
     }
 
     this.connectWebSocket();
     this.loadInitialData();
     this.setupEventListeners();
+    this.initializeHyperlens();
   }
 
   connectWebSocket() {
@@ -60,20 +70,34 @@ class TelegramWhaleTracker {
   async loadInitialData() {
     try {
       const baseUrl = window.location.origin;
-      const [stats, heatmap, alerts, positions] = await Promise.all([
+      const [stats, heatmap, alerts, positions, whales] = await Promise.all([
         fetch(`${baseUrl}/api/stats`).then(r => r.json()),
         fetch(`${baseUrl}/api/heatmap`).then(r => r.json()),
         fetch(`${baseUrl}/api/alerts`).then(r => r.json()),
-        fetch(`${baseUrl}/api/positions`).then(r => r.json())
+        fetch(`${baseUrl}/api/positions`).then(r => r.json()),
+        fetch(`${baseUrl}/api/whales`).then(r => r.json()).catch(() => [])
       ]);
 
       this.updateStats(stats);
       this.renderHeatmap(heatmap);
       this.renderAlerts(alerts);
       this.renderPositions(positions);
+      this.renderWhales(whales);
+      this.populateAssetSelect(heatmap);
     } catch (error) {
       console.error('Error loading initial data:', error);
     }
+  }
+
+  populateAssetSelect(heatmap) {
+    const select = document.getElementById('assetSelect');
+    if (!select || !heatmap || !heatmap.assets) return;
+    
+    const options = heatmap.assets.map(a => 
+      `<option value="${a.asset}">${a.asset}</option>`
+    ).join('');
+    
+    select.innerHTML = '<option value="">All Assets</option>' + options;
   }
 
   updateStats(stats) {
@@ -86,27 +110,61 @@ class TelegramWhaleTracker {
     }
   }
 
-  renderHeatmap(heatmap) {
-    const container = document.getElementById('heatmapBars');
+  renderHeatmap(heatmap, asset = null) {
+    this.lastHeatmap = heatmap;
+    const container = document.getElementById('heatmapContainer');
     
     if (!heatmap || !heatmap.globalLevels || heatmap.globalLevels.length === 0) {
-      container.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">No liquidation data yet</div>';
+      container.innerHTML = `
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>No liquidation data yet</p>
+        </div>
+      `;
       return;
     }
 
-    const levels = heatmap.globalLevels.slice(0, 20); // Limit for mobile
+    const levels = asset ? 
+      (heatmap.assets?.find(a => a.asset === asset)?.levels || []) :
+      heatmap.globalLevels;
+    
     const maxNotional = Math.max(...levels.map(l => l.totalNotional || 0));
     
-    const barsHTML = levels.map(level => {
+    if (levels.length === 0) {
+      container.innerHTML = `
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>No data for selected asset</p>
+        </div>
+      `;
+      return;
+    }
+    
+    const barsHTML = levels.slice(0, 20).map(level => {
       const height = maxNotional > 0 ? (level.totalNotional / maxNotional) * 100 : 5;
       const isLong = (level.longNotional || 0) > (level.shortNotional || 0);
       const side = isLong ? 'long' : 'short';
       
       return `<div class="heatmap-bar ${side}" style="height: ${Math.max(height, 8)}%" 
-               title="$${this.formatLargeNumber(level.totalNotional)} at ${level.percentFromCurrent.toFixed(1)}%"></div>`;
+               title="$${this.formatLargeNumber(level.totalNotional)} at ${level.percentFromCurrent?.toFixed(1) || 0}%"></div>`;
     }).join('');
 
-    container.innerHTML = barsHTML;
+    const totalRisk = levels.reduce((sum, level) => sum + (level.totalNotional || 0), 0);
+    const totalPositions = levels.reduce((sum, level) => sum + (level.positionCount || 0), 0);
+
+    container.innerHTML = `
+      <div class="heatmap-stats">
+        <div class="heatmap-stat">
+          <div class="heatmap-stat-value">$${this.formatLargeNumber(totalRisk)}</div>
+          <div class="heatmap-stat-label">Total Risk</div>
+        </div>
+        <div class="heatmap-stat">
+          <div class="heatmap-stat-value">${totalPositions}</div>
+          <div class="heatmap-stat-label">Positions</div>
+        </div>
+      </div>
+      <div class="heatmap-bars">${barsHTML}</div>
+    `;
   }
 
   renderAlerts(alerts) {
@@ -143,46 +201,121 @@ class TelegramWhaleTracker {
     container.innerHTML = alertsHTML;
   }
 
-  renderPositions(positions) {
-    const container = document.getElementById('positionsFeed');
+  renderPositions(positions, filter = 'all') {
+    this.lastPositions = positions;
+    const container = document.getElementById('positionsContainer');
     
     if (!positions || positions.length === 0) {
       container.innerHTML = `
-        <div class="position-item">
-          <div class="position-header">
-            <span class="position-asset">#NONE</span>
-            <span class="position-side">NO</span>
-            <span class="position-value">$0</span>
-          </div>
-          <div class="position-details">
-            <span>No active positions</span>
-          </div>
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>No active positions</p>
         </div>
       `;
       return;
     }
 
-    const positionsHTML = positions.slice(0, 10).map(pos => {
+    let filteredPositions = positions;
+    if (filter === 'longs') {
+      filteredPositions = positions.filter(p => p.side === 'LONG');
+    } else if (filter === 'shorts') {
+      filteredPositions = positions.filter(p => p.side === 'SHORT');
+    }
+
+    const positionsHTML = filteredPositions.slice(0, 20).map(pos => {
       const side = pos.side || 'LONG';
       const sideClass = side.toLowerCase();
       const distance = pos.liquidationDistance || 0;
+      const riskClass = distance < 5 ? 'high-risk' : distance < 15 ? 'medium-risk' : 'low-risk';
       
       return `
-        <div class="position-item">
+        <div class="position-item ${riskClass}">
           <div class="position-header">
             <span class="position-asset">#${pos.asset}</span>
             <span class="position-side ${sideClass}">${side}</span>
-            <span class="position-value">${this.formatLargeNumber(pos.positionValue)}</span>
+            <span class="position-value">$${this.formatLargeNumber(pos.positionValue || 0)}</span>
           </div>
           <div class="position-details">
             <span>${pos.leverage || 0}x leverage</span>
-            <span>${distance.toFixed(1)}% to liquidation</span>
+            <span class="${riskClass}">${distance.toFixed(1)}% to liquidation</span>
+          </div>
+          <div class="position-address">
+            <span class="wallet-link" onclick="copyAddress('${pos.address}')" title="Click to copy">
+              ${pos.address ? pos.address.slice(0, 8) + '...' + pos.address.slice(-6) : 'Unknown'}
+            </span>
           </div>
         </div>
       `;
     }).join('');
 
     container.innerHTML = positionsHTML;
+  }
+
+  renderWhales(whales, sortBy = 'pnl') {
+    this.lastWhales = whales;
+    const container = document.getElementById('whalesContainer');
+    
+    if (!whales || whales.length === 0) {
+      container.innerHTML = `
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>No whale data available</p>
+        </div>
+      `;
+      return;
+    }
+
+    let sortedWhales = [...whales];
+    switch (sortBy) {
+      case 'roi':
+        sortedWhales.sort((a, b) => (b.roi || 0) - (a.roi || 0));
+        break;
+      case 'risk':
+        sortedWhales.sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0));
+        break;
+      default:
+        sortedWhales.sort((a, b) => (b.totalPnL || 0) - (a.totalPnL || 0));
+    }
+
+    const whalesHTML = sortedWhales.slice(0, 20).map((whale, index) => {
+      const pnlClass = whale.totalPnL >= 0 ? 'positive' : 'negative';
+      const roiClass = whale.roi >= 0 ? 'positive' : 'negative';
+      
+      return `
+        <div class="whale-card">
+          <div class="whale-header">
+            <span class="whale-rank">#${index + 1}</span>
+            <span class="whale-roi ${roiClass}">${whale.roi >= 0 ? '+' : ''}${(whale.roi || 0).toFixed(2)}% ROI</span>
+          </div>
+          <div class="whale-details">
+            <div class="whale-detail-row">
+              <span class="whale-label">Total PnL:</span>
+              <span class="whale-value ${pnlClass}">${whale.totalPnL >= 0 ? '+' : ''}$${this.formatLargeNumber(Math.abs(whale.totalPnL || 0))}</span>
+            </div>
+            <div class="whale-detail-row">
+              <span class="whale-label">Margin:</span>
+              <span class="whale-value">$${this.formatLargeNumber(whale.marginUsed || 0)}</span>
+            </div>
+            <div class="whale-detail-row">
+              <span class="whale-label">Trades:</span>
+              <span class="whale-value">${whale.totalTrades || 0}</span>
+            </div>
+            <div class="whale-detail-row">
+              <span class="whale-label">Positions:</span>
+              <span class="whale-value">${whale.activePositions || 0}</span>
+            </div>
+          </div>
+          <div class="whale-address">
+            <span class="wallet-link" onclick="copyAddress('${whale.address}')" title="Click to copy">
+              ${whale.address ? whale.address.slice(0, 8) + '...' + whale.address.slice(-6) : 'Unknown'}
+            </span>
+            <a href="https://app.hyperliquid.xyz/explorer/account?address=${whale.address}" target="_blank" class="explorer-link">🔗</a>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = whalesHTML;
   }
 
   handleWebSocketMessage(data) {
@@ -202,24 +335,216 @@ class TelegramWhaleTracker {
   }
 
   setupEventListeners() {
-    // Bottom navigation
-    window.showSection = (section) => {
-      this.currentSection = section;
-      
-      // Update nav buttons
-      document.querySelectorAll('.nav-button').forEach(btn => {
-        btn.classList.remove('active');
+    // Tab navigation
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const tab = e.currentTarget.dataset.tab;
+        this.switchTab(tab);
       });
-      event.target.closest('.nav-button').classList.add('active');
-      
-      // Show/hide sections
-      document.querySelectorAll('.section').forEach(el => {
-        el.classList.remove('active');
+    });
+
+    // Filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const filter = e.currentTarget.dataset.filter;
+        this.filterPositions(filter);
       });
+    });
+
+    // Asset selector
+    const assetSelect = document.getElementById('assetSelect');
+    if (assetSelect) {
+      assetSelect.addEventListener('change', (e) => {
+        this.filterHeatmapByAsset(e.target.value);
+      });
+    }
+
+    // Whale sort selector
+    const whaleSort = document.getElementById('whaleSort');
+    if (whaleSort) {
+      whaleSort.addEventListener('change', (e) => {
+        this.sortWhales(e.target.value);
+      });
+    }
+
+    // Pull to refresh
+    this.setupPullToRefresh();
+
+    // Touch gestures
+    this.setupTouchGestures();
+  }
+
+  switchTab(tabName) {
+    this.currentTab = tabName;
+    
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    
+    // Show/hide tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+
+    // Update Telegram WebApp title
+    if (this.tg) {
+      const titles = {
+        'heatmap': '🔥 Liquidation Heatmap',
+        'positions': '📊 Whale Positions',
+        'alerts': '🚨 Live Alerts',
+        'whales': '🐋 Top Whales'
+      };
+      this.tg.setHeaderColor(tabName === 'alerts' ? '#ff4444' : '#00ff41');
+    }
+  }
+
+  filterPositions(filter) {
+    // Update filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+    
+    // Re-render positions with filter
+    this.renderPositions(this.lastPositions, filter);
+  }
+
+  filterHeatmapByAsset(asset) {
+    // Re-render heatmap with asset filter
+    if (this.lastHeatmap) {
+      this.renderHeatmap(this.lastHeatmap, asset);
+    }
+  }
+
+  sortWhales(sortBy) {
+    // Re-render whales with new sort
+    if (this.lastWhales) {
+      this.renderWhales(this.lastWhales, sortBy);
+    }
+  }
+
+  setupPullToRefresh() {
+    let startY = 0;
+    let currentY = 0;
+    let isRefreshing = false;
+
+    document.addEventListener('touchstart', (e) => {
+      if (window.scrollY === 0) {
+        startY = e.touches[0].clientY;
+      }
+    });
+
+    document.addEventListener('touchmove', (e) => {
+      if (window.scrollY === 0 && !isRefreshing) {
+        currentY = e.touches[0].clientY;
+        const pullDistance = currentY - startY;
+        
+        if (pullDistance > 0) {
+          const pullRefresh = document.getElementById('pullRefresh');
+          const progress = Math.min(pullDistance / 100, 1);
+          
+          pullRefresh.style.transform = `translateY(${Math.min(pullDistance * 0.5, 50)}px)`;
+          pullRefresh.style.opacity = progress;
+          
+          if (pullDistance > 100) {
+            pullRefresh.querySelector('.refresh-text').textContent = 'Release to refresh';
+          } else {
+            pullRefresh.querySelector('.refresh-text').textContent = 'Pull to refresh';
+          }
+        }
+      }
+    });
+
+    document.addEventListener('touchend', (e) => {
+      if (window.scrollY === 0 && !isRefreshing) {
+        const pullDistance = currentY - startY;
+        
+        if (pullDistance > 100) {
+          this.refreshData();
+        }
+        
+        // Reset pull refresh indicator
+        const pullRefresh = document.getElementById('pullRefresh');
+        pullRefresh.style.transform = 'translateY(-100px)';
+        pullRefresh.style.opacity = '0';
+      }
+    });
+  }
+
+  setupTouchGestures() {
+    // Add haptic feedback for important actions
+    if (this.tg && this.tg.HapticFeedback) {
+      document.querySelectorAll('.alert-item, .position-item, .whale-card').forEach(item => {
+        item.addEventListener('touchstart', () => {
+          this.tg.HapticFeedback.impactOccurred('light');
+        });
+      });
+    }
+  }
+
+  initializeHyperlens() {
+    // Initialize Hyperlens API client (would need to be included)
+    // this.hyperlensAPI = new HyperlensAPI();
+    console.log('Hyperlens.io integration ready');
+  }
+
+  async refreshData() {
+    console.log('Refreshing data...');
+    
+    // Show refresh indicator
+    const pullRefresh = document.getElementById('pullRefresh');
+    pullRefresh.querySelector('.refresh-text').textContent = 'Refreshing...';
+    pullRefresh.style.transform = 'translateY(0px)';
+    pullRefresh.style.opacity = '1';
+
+    try {
+      await this.loadInitialData();
       
-      // For now, we'll keep all sections visible since we don't have separate section divs
-      // In a full implementation, you'd show/hide different sections
-    };
+      // Haptic feedback for successful refresh
+      if (this.tg && this.tg.HapticFeedback) {
+        this.tg.HapticFeedback.notificationOccurred('success');
+      }
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      
+      // Haptic feedback for error
+      if (this.tg && this.tg.HapticFeedback) {
+        this.tg.HapticFeedback.notificationOccurred('error');
+      }
+    } finally {
+      // Hide refresh indicator
+      setTimeout(() => {
+        pullRefresh.style.transform = 'translateY(-100px)';
+        pullRefresh.style.opacity = '0';
+      }, 1000);
+    }
+  }
+
+  openInBrowser() {
+    if (this.tg) {
+      this.tg.openLink(window.location.href.replace('/telegram-app.html', ''));
+    } else {
+      window.open(window.location.href.replace('/telegram-app.html', ''), '_blank');
+    }
+  }
+
+  shareDashboard() {
+    if (this.tg) {
+      this.tg.showAlert('Share this dashboard with other traders!');
+    } else if (navigator.share) {
+      navigator.share({
+        title: 'Hyperliquid Whale Tracker',
+        text: 'Real-time whale liquidation monitoring',
+        url: window.location.href.replace('/telegram-app.html', '')
+      });
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(window.location.href.replace('/telegram-app.html', ''));
+      alert('Dashboard URL copied to clipboard!');
+    }
   }
 
   // Helper functions
@@ -274,7 +599,54 @@ class TelegramWhaleTracker {
   }
 }
 
+// Global functions for HTML onclick handlers
+window.refreshData = function() {
+  if (window.telegramTracker) {
+    window.telegramTracker.refreshData();
+  }
+};
+
+window.openInBrowser = function() {
+  if (window.telegramTracker) {
+    window.telegramTracker.openInBrowser();
+  }
+};
+
+window.shareDashboard = function() {
+  if (window.telegramTracker) {
+    window.telegramTracker.shareDashboard();
+  }
+};
+
+window.copyAddress = function(address) {
+  navigator.clipboard.writeText(address).then(() => {
+    // Show feedback
+    if (window.telegramTracker && window.telegramTracker.tg && window.telegramTracker.tg.HapticFeedback) {
+      window.telegramTracker.tg.HapticFeedback.impactOccurred('light');
+    }
+    
+    // Visual feedback
+    const originalText = event.target.textContent;
+    event.target.textContent = 'Copied!';
+    event.target.style.color = '#00ff41';
+    
+    setTimeout(() => {
+      event.target.textContent = originalText;
+      event.target.style.color = '';
+    }, 1000);
+  }).catch(err => {
+    console.error('Failed to copy address:', err);
+    // Fallback
+    const textArea = document.createElement('textarea');
+    textArea.value = address;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+  });
+};
+
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', () => {
-  new TelegramWhaleTracker();
+  window.telegramTracker = new TelegramWhaleTracker();
 });

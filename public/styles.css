@@ -4,6 +4,56 @@
   box-sizing: border-box;
 }
 
+/* Critical mobile optimization - prevent horizontal scrolling */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+body {
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure all containers don't exceed viewport width */
+.container, .main-grid, .panel, .nav-bar, .stats-bar, .heatmap-container {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Force single column layout on all screen sizes */
+.main-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: 1fr !important;
+}
+
+/* Prevent horizontal scrolling on navigation */
+.nav-bar {
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Ensure heatmap doesn't cause horizontal scroll */
+.heatmap-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.heatmap-bars {
+  min-width: 100%;
+  width: max-content;
+}
+
 /* Wallet address styles */
 .wallet-link {
   cursor: pointer;
@@ -626,6 +676,49 @@
   background: rgba(0, 170, 255, 0.05);
 }
 
+/* Enhanced alert styles */
+.alert-card.enhanced-alert {
+  border: 2px solid rgba(0, 255, 65, 0.3);
+  background: linear-gradient(135deg, rgba(0, 255, 65, 0.05), rgba(0, 255, 65, 0.02));
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.1);
+}
+
+.alert-card.cascade-warning {
+  border-left: 4px solid #ff4444;
+  background: linear-gradient(135deg, rgba(255, 68, 68, 0.1), rgba(255, 68, 68, 0.05));
+  animation: cascadePulse 2s infinite;
+}
+
+@keyframes cascadePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.alert-card.whale-pattern {
+  border-left: 4px solid #00ff41;
+  background: linear-gradient(135deg, rgba(0, 255, 65, 0.1), rgba(0, 255, 65, 0.05));
+}
+
+.alert-card.volatility-spike {
+  border-left: 4px solid #ffaa00;
+  background: linear-gradient(135deg, rgba(255, 170, 0, 0.1), rgba(255, 170, 0, 0.05));
+}
+
+.alert-card.liquidation-cluster {
+  border-left: 4px solid #ff4444;
+  background: linear-gradient(135deg, rgba(255, 68, 68, 0.1), rgba(255, 68, 68, 0.05));
+}
+
+.alert-card.enhanced-risk {
+  border-left: 4px solid #ff8800;
+  background: linear-gradient(135deg, rgba(255, 136, 0, 0.1), rgba(255, 136, 0, 0.05));
+}
+
+.alert-card.hyperlens-insight {
+  border-left: 4px solid #4fc3f7;
+  background: linear-gradient(135deg, rgba(79, 195, 247, 0.1), rgba(79, 195, 247, 0.05));
+}
+
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
@@ -735,9 +828,41 @@ h2 {
   gap: 20px;
 }
 
-/* Mobile Optimization */
+/* Mobile Optimization - Enhanced for no horizontal scrolling */
 
 @media (max-width: 768px) {
+  /* Critical mobile fixes */
+  html {
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+  
+  body {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* Force viewport constraints */
+  .container {
+    width: 100%;
+    max-width: 100vw;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  
+  /* Ensure all text wraps properly */
+  h1, h2, h3, p, div, span {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  /* Prevent any element from causing horizontal scroll */
+  * {
+    max-width: 100%;
+  }
   body {
     padding: 10px;
   }
