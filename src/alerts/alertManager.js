@@ -110,7 +110,14 @@ export class AlertManager {
     const color = typeColor[alert.type] || chalk.white;
     
     console.log('\n' + '='.repeat(80));
-    console.log(color.bold(`[${alert.type}]`) + chalk.gray(` ${timestamp}`));
+    const timeStr = new Date().toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit',
+      fractionalSecondDigits: 3
+    });
+    console.log(color.bold(`[${alert.type}]`) + chalk.gray(` ${timeStr}`));
     console.log(chalk.white(`Asset: ${alert.asset || 'N/A'}`));
     
     if (alert.address) {
@@ -289,14 +296,13 @@ export class AlertManager {
       if (alert.type === 'LIQUIDATION') {
         const sideEmoji = alert.side === 'LONG' ? '🟢' : '🔴';
         const sideText = alert.side === 'LONG' ? 'Long' : 'Short';
-        const notionalFormatted = this.formatLargeNumber(alert.notional || 0);
+        const notionalFormatted = this.formatLargeNumber(alert.notionalValue || alert.notional || 0);
         const liquidationPrice = Number(alert.liquidationPrice || 0);
         const asset = (alert.asset || 'UNKNOWN').replace(/[<>&]/g, '');
         const address = (alert.address || '').replace(/[<>&]/g, '');
         
-        let msg = `${sideEmoji} <a href="https://app.hyperliquid.xyz/explorer/account?address=${address}">${address.slice(0, 10)}...${address.slice(-8)}</a>\n`;
         const price = liquidationPrice || alert.entryPrice || 0;
-        msg += `#${asset} Liquidated ${sideText}: $${notionalFormatted} at $${Number(price).toFixed(2)}`;
+        let msg = `${sideEmoji} <a href="https://app.hyperliquid.xyz/explorer/account?address=${address}">${address.slice(0, 10)}...${address.slice(-8)}</a> #${asset} Liquidated ${sideText}: $${notionalFormatted} at $${Number(price).toLocaleString()}`;
         
         return msg;
       }

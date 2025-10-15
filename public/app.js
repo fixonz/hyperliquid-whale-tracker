@@ -83,19 +83,25 @@ function handleWebSocketMessage(message) {
       state.alerts = message.data.alerts;
       renderAlerts();
     }
+    
+    if (message.data.digestStats) {
+      state.digestStats = message.data.digestStats;
+      renderDigestStats();
+    }
   }
 }
 
 // Fetch initial data
 async function fetchInitialData() {
   try {
-    const [stats, heatmap, positions, alerts, whales, prices] = await Promise.all([
+    const [stats, heatmap, positions, alerts, whales, prices, digestStats] = await Promise.all([
       fetch('/api/stats').then(r => r.json()),
       fetch('/api/heatmap').then(r => r.json()),
       fetch('/api/positions').then(r => r.json()),
       fetch('/api/alerts').then(r => r.json()),
       fetch('/api/whales').then(r => r.json()),
-      fetch('/api/prices').then(r => r.json())
+      fetch('/api/prices').then(r => r.json()),
+      fetch('/api/digest-stats').then(r => r.json())
     ]);
     
     state.stats = stats;
@@ -104,6 +110,7 @@ async function fetchInitialData() {
     state.alerts = alerts;
     state.whales = whales;
     state.prices = prices;
+    state.digestStats = digestStats;
     
     updateStats();
     renderHeatmap();
@@ -111,6 +118,7 @@ async function fetchInitialData() {
     renderAlerts();
     renderWhales();
     renderDiscoveryStats();
+    renderDigestStats();
     populateAssetSelect();
   } catch (error) {
     console.error('Error fetching initial data:', error);
@@ -123,6 +131,8 @@ function updateStats() {
   document.getElementById('positionsCount').textContent = state.stats.positionsMonitored || 0;
   document.getElementById('newAddresses').textContent = state.stats?.discoveryStats?.totalAdded || 0;
   document.getElementById('totalScans').textContent = state.stats.totalScans || 0;
+  document.getElementById('totalLiquidations').textContent = state.stats.totalLiquidations || 0;
+  document.getElementById('liquidationVolume').textContent = `$${formatLargeNumber(state.stats.liquidationVolume || 0)}`;
 }
 
 function updateStatus(text, type) {
@@ -809,6 +819,43 @@ function renderDiscoveryStats() {
     }
   } else {
     container.innerHTML = '<div class="loading">Waiting for discovery data...</div>';
+  }
+}
+
+// Render digest stats
+function renderDigestStats() {
+  if (!state.digestStats) return;
+  
+  const stats = state.digestStats;
+  
+  // Update activity stats
+  document.getElementById('sevenMinVolume').textContent = `$${formatLargeNumber(stats.volume || 0)}`;
+  document.getElementById('sevenMinLongs').textContent = `${stats.longsCount || 0} ($${formatLargeNumber(stats.longsValue || 0)})`;
+  document.getElementById('sevenMinShorts').textContent = `${stats.shortsCount || 0} ($${formatLargeNumber(stats.shortsValue || 0)})`;
+  document.getElementById('sevenMinLeverage').textContent = `${(stats.maxLeverage || 0).toFixed(1)}x`;
+  document.getElementById('sevenMinAtRisk').textContent = `${stats.atRiskCount || 0} positions`;
+  
+  // Render closest to liquidation
+  const closestContainer = document.getElementById('closestToLiq');
+  
+  if (stats.closestToLiq && stats.closestToLiq.length > 0) {
+    const closestHTML = stats.closestToLiq.map(risk => {
+      const riskClass = risk.percentFromLiquidation < 5 ? 'high-risk' : 
+                       risk.percentFromLiquidation < 10 ? 'medium-risk' : '';
+      
+      return `
+        <div class="risk-entry ${riskClass}">
+          <span class="wallet-link" onclick="copyAddress('${risk.address}')" title="Click to copy">
+            ${risk.address.slice(0, 8)}...${risk.address.slice(-6)}
+          </span>
+          <span>${risk.asset} ${risk.side} ${risk.percentFromLiquidation.toFixed(1)}% away</span>
+        </div>
+      `;
+    }).join('');
+    
+    closestContainer.innerHTML = closestHTML;
+  } else {
+    closestContainer.innerHTML = '<div class="loading">No positions at risk currently</div>';
   }
 }
 

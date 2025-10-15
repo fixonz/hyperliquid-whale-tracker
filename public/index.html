@@ -37,6 +37,14 @@
           <span class="stat-label">New Addresses</span>
           <span class="stat-value" id="newAddresses">0</span>
         </div>
+        <div class="stat">
+          <span class="stat-label">Total Liquidations</span>
+          <span class="stat-value" id="totalLiquidations">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Liquidation Volume</span>
+          <span class="stat-value" id="liquidationVolume">$0</span>
+        </div>
       </div>
     </header>
 
@@ -98,6 +106,35 @@
         </div>
         <div class="discovery-log" id="discoveryLog">
           <div class="loading">Waiting for discovery data...</div>
+        </div>
+      </div>
+
+      <div class="panel stats-panel">
+        <h2>📊 7-Minute Activity Summary</h2>
+        <div class="activity-stats">
+          <div class="activity-stat">
+            <span class="activity-label">Volume:</span>
+            <span class="activity-value" id="sevenMinVolume">$0</span>
+          </div>
+          <div class="activity-stat">
+            <span class="activity-label">Longs:</span>
+            <span class="activity-value" id="sevenMinLongs">0 ($0)</span>
+          </div>
+          <div class="activity-stat">
+            <span class="activity-label">Shorts:</span>
+            <span class="activity-value" id="sevenMinShorts">0 ($0)</span>
+          </div>
+          <div class="activity-stat">
+            <span class="activity-label">Max Leverage:</span>
+            <span class="activity-value" id="sevenMinLeverage">0.0x</span>
+          </div>
+          <div class="activity-stat">
+            <span class="activity-label">At Risk:</span>
+            <span class="activity-value" id="sevenMinAtRisk">0 positions</span>
+          </div>
+        </div>
+        <div class="closest-to-liq" id="closestToLiq">
+          <div class="loading">Loading risk data...</div>
         </div>
       </div>
     </div>

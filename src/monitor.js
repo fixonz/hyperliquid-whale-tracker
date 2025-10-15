@@ -40,6 +40,8 @@ class LiquidationMonitor {
       totalAlertsS: 0,
       whalesTracked: 0,
       positionsMonitored: 0,
+      totalLiquidations: 0,
+      liquidationVolume: 0,
       lastUpdate: null,
       discoveryStats: {
         lastDiscovery: null,
@@ -112,6 +114,10 @@ class LiquidationMonitor {
         // Only alert for significant liquidations (over $10K)
         if (notional >= 10000) {
           console.log(chalk.red.bold(`🚨 LIQUIDATION DETECTED: ${asset} ${side} $${this.formatNumber(notional)}`));
+          
+          // Update liquidation stats
+          this.stats.totalLiquidations++;
+          this.stats.liquidationVolume += notional;
           
           await this.alertManager.sendAlert({
             type: 'LIQUIDATION',

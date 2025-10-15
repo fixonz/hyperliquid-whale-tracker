@@ -46,6 +46,13 @@ app.get('/api/stats', (req, res) => {
 });
 
 /**
+ * Get 7-minute digest stats
+ */
+app.get('/api/digest-stats', (req, res) => {
+  res.json(monitor.digestManager.getCurrentStats());
+});
+
+/**
  * Get tracked positions
  */
 app.get('/api/positions', (req, res) => {
@@ -137,7 +144,8 @@ function broadcastUpdate() {
       stats: monitor.getStats(),
       heatmap: monitor.getHeatmap(),
       positions: monitor.whaleTracker.getAllPositions(),
-      alerts: monitor.alertManager.getAlertHistory(10)
+      alerts: monitor.alertManager.getAlertHistory(10),
+      digestStats: monitor.digestManager.getCurrentStats()
     },
     timestamp: Date.now()
   };

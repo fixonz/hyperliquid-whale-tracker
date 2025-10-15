@@ -449,5 +449,33 @@ export class DigestManager {
     }
     return num.toFixed(0);
   }
+
+  /**
+   * Get current digest stats for dashboard
+   */
+  getCurrentStats() {
+    const stats = this.digest.stats;
+    const volume = stats.totalLongValue + stats.totalShortValue;
+    const longsCount = stats.totalLongsOpened;
+    const shortsCount = stats.totalShortsOpened;
+    const maxLeverage = stats.highestLeverage;
+    const atRiskCount = this.digest.liquidationRisks.length;
+    
+    // Get closest to liquidation positions
+    const closestToLiq = this.digest.liquidationRisks
+      .sort((a, b) => a.percentFromLiquidation - b.percentFromLiquidation)
+      .slice(0, 5);
+    
+    return {
+      volume,
+      longsCount,
+      shortsCount,
+      longsValue: stats.totalLongValue,
+      shortsValue: stats.totalShortValue,
+      maxLeverage,
+      atRiskCount,
+      closestToLiq
+    };
+  }
 }
 
