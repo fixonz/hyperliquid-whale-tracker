@@ -48,8 +48,18 @@
       </div>
     </header>
 
+    <!-- Navigation Bar -->
+    <div class="nav-bar">
+      <button class="nav-btn active" onclick="scrollToSection('heatmap')">🔥 Heatmap</button>
+      <button class="nav-btn" onclick="scrollToSection('positions')">📊 Positions</button>
+      <button class="nav-btn" onclick="scrollToSection('alerts')">🚨 Alerts</button>
+      <button class="nav-btn" onclick="scrollToSection('whales')">🐋 Whales</button>
+      <button class="nav-btn" onclick="scrollToSection('discovery')">🔍 Discovery</button>
+      <button class="nav-btn" onclick="scrollToSection('stats')">📈 Stats</button>
+    </div>
+
     <div class="main-grid">
-      <div class="panel heatmap-panel">
+      <div class="panel heatmap-panel" id="heatmap">
         <h2>Liquidation Heatmap</h2>
         <div class="heatmap-controls">
           <select id="assetSelect">
@@ -62,7 +72,7 @@
         </div>
       </div>
 
-      <div class="panel positions-panel">
+      <div class="panel positions-panel" id="positions">
         <h2>Whale Positions</h2>
         <div class="tabs">
           <button class="tab active" onclick="showTab('all')">All</button>
@@ -74,21 +84,21 @@
         </div>
       </div>
 
-      <div class="panel alerts-panel">
+      <div class="panel alerts-panel" id="alerts">
         <h2>Recent Alerts</h2>
         <div id="alertsContainer" class="alerts-container">
           <div class="loading">Loading alerts...</div>
         </div>
       </div>
 
-      <div class="panel whales-panel">
+      <div class="panel whales-panel" id="whales">
         <h2>Top Profitable Whales</h2>
         <div id="whalesContainer" class="whales-container">
           <div class="loading">Loading whales...</div>
         </div>
       </div>
 
-      <div class="panel discovery-panel">
+      <div class="panel discovery-panel" id="discovery">
         <h2>🔍 Active Address Discovery</h2>
         <div class="discovery-stats">
           <div class="discovery-stat">
@@ -109,7 +119,7 @@
         </div>
       </div>
 
-      <div class="panel stats-panel">
+      <div class="panel stats-panel" id="stats">
         <h2>📊 7-Minute Activity Summary</h2>
         <div class="activity-stats">
           <div class="activity-stat">

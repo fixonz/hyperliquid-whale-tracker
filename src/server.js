@@ -157,8 +157,8 @@ function broadcastUpdate() {
   });
 }
 
-// Broadcast updates every 5 seconds
-setInterval(broadcastUpdate, 5000);
+// Broadcast updates every 2 seconds for real-time feel
+setInterval(broadcastUpdate, 2000);
 
 // Keep service awake with external health check every 10 minutes
 setInterval(async () => {

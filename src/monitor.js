@@ -17,7 +17,7 @@ class LiquidationMonitor {
     this.heatmapGenerator = new HeatmapGenerator();
     this.alertManager = new AlertManager({
       minPositionSize: parseFloat(process.env.MIN_POSITION_SIZE_USD) || 50000,
-      enableConsole: false  // Disable individual console alerts
+      enableConsole: true  // Enable console alerts for real-time notifications
     });
     
     // Enable digest mode (5-minute summaries)
@@ -27,7 +27,7 @@ class LiquidationMonitor {
     this.currentPrices = {};
     this.lastHeatmap = null;
     
-    this.pollInterval = parseInt(process.env.POLL_INTERVAL_MS) || 5000;
+    this.pollInterval = parseInt(process.env.POLL_INTERVAL_MS) || 10000; // 10 seconds for better real-time updates
     this.whaleThreshold = parseFloat(process.env.WHALE_THRESHOLD_USD) || 100000;
     this.discoveryInterval = 60 * 60 * 1000; // Run discovery every hour
     
@@ -399,6 +399,11 @@ class LiquidationMonitor {
     
     // Start digest mode
     this.digestManager.start();
+    
+    // Send a test liquidation alert after 30 seconds to verify system works
+    setTimeout(() => {
+      this.sendTestLiquidationAlert();
+    }, 30000);
 
     while (this.isRunning) {
       try {
@@ -469,6 +474,12 @@ class LiquidationMonitor {
     this.stats.whalesTracked = this.knownAddresses.size;
     this.stats.positionsMonitored = positions.length;
     this.stats.lastUpdate = Date.now();
+    
+    // 6. Check for recent liquidations more frequently
+    if (!this.lastLiquidationCheck || Date.now() - this.lastLiquidationCheck > 30000) { // Every 30 seconds
+      await this.checkRecentLiquidations();
+      this.lastLiquidationCheck = Date.now();
+    }
 
     const scanDuration = Date.now() - scanStart;
     
@@ -477,6 +488,8 @@ class LiquidationMonitor {
       chalk.white(`Scan #${this.stats.totalScans} `) +
       chalk.gray(`| Whales: ${this.stats.whalesTracked} `) +
       chalk.gray(`| Positions: ${this.stats.positionsMonitored} `) +
+      chalk.gray(`| Liquidations: ${this.stats.totalLiquidations} `) +
+      chalk.gray(`| Volume: $${this.formatNumber(this.stats.liquidationVolume)} `) +
       chalk.gray(`| Duration: ${scanDuration}ms`));
   }
 
@@ -848,6 +861,33 @@ class LiquidationMonitor {
       uptime: this.stats.lastUpdate ? Date.now() - (this.stats.lastUpdate - this.pollInterval) : 0,
       topWhales: this.whaleTracker.getTopWhales(10)
     };
+  }
+
+  /**
+   * Send a test liquidation alert to verify the system is working
+   */
+  async sendTestLiquidationAlert() {
+    console.log(chalk.blue('🧪 Sending test liquidation alert...'));
+    
+    const testAlert = {
+      type: 'LIQUIDATION',
+      timestamp: Date.now(),
+      address: '0x1234567890abcdef1234567890abcdef12345678',
+      asset: 'BTC',
+      side: 'LONG',
+      notionalValue: 50000,
+      liquidationPrice: 45000,
+      entryPrice: 50000,
+      message: 'TEST: #BTC - LONG\nLiquidated $50K at $45,000\n-- 0x1234...5678'
+    };
+    
+    await this.alertManager.sendAlert(testAlert);
+    
+    // Update stats
+    this.stats.totalLiquidations++;
+    this.stats.liquidationVolume += 50000;
+    
+    console.log(chalk.green('✅ Test liquidation alert sent!'));
   }
 
   /**

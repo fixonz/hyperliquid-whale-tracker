@@ -731,17 +731,11 @@ h2 {
 
 .main-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  grid-template-rows: auto auto auto;
+  grid-template-columns: 1fr;
   gap: 20px;
 }
 
 /* Mobile Optimization */
-@media (max-width: 1200px) {
-  .main-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
 @media (max-width: 768px) {
   body {
@@ -895,6 +889,17 @@ h2 {
     max-height: 150px;
     padding: 12px;
     font-size: 11px;
+  }
+  
+  /* Navigation mobile */
+  .nav-bar {
+    padding: 8px;
+    gap: 6px;
+  }
+  
+  .nav-btn {
+    padding: 6px 12px;
+    font-size: 13px;
   }
   
   /* Heatmap charts mobile */
@@ -1170,29 +1175,51 @@ h2 {
   min-height: 300px;
 }
 
-.heatmap-panel {
-  grid-column: 1 / -1;
-  grid-row: 1;
+/* All panels now stack vertically in single column */
+
+/* Navigation Bar */
+.nav-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.positions-panel {
-  grid-column: 1;
-  grid-row: 2;
+.nav-bar::-webkit-scrollbar {
+  display: none;
 }
 
-.alerts-panel {
-  grid-column: 2;
-  grid-row: 2;
+.nav-btn {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  background: #0f1419;
+  border: 1px solid #1f2937;
+  color: #6b7280;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
-.whales-panel {
-  grid-column: 1;
-  grid-row: 3;
+.nav-btn:hover {
+  border-color: #00ff41;
+  color: #00ff41;
+  background: rgba(0, 255, 65, 0.1);
 }
 
-.discovery-panel {
-  grid-column: 2;
-  grid-row: 3;
+.nav-btn.active {
+  background: #1f2937;
+  border-color: #00ff41;
+  color: #00ff41;
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
 }
 
 .heatmap-controls {

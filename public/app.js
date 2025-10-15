@@ -859,6 +859,24 @@ function renderDigestStats() {
   }
 }
 
+// Navigation function
+function scrollToSection(sectionId) {
+  // Update active button
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.classList.add('active');
+  
+  // Scroll to section
+  const element = document.getElementById(sectionId);
+  if (element) {
+    element.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'start'
+    });
+  }
+}
+
 // Initialize on load
 document.addEventListener('DOMContentLoaded', init);
 
