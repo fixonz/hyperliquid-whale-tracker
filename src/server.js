@@ -111,6 +111,26 @@ app.post('/api/addresses', (req, res) => {
 });
 
 /**
+ * Trigger manual address discovery
+ */
+app.post('/api/discover-addresses', async (req, res) => {
+  try {
+    console.log('🔍 Manual address discovery triggered via API');
+    const discoveredAddresses = await monitor.findActiveAddressesFromTrades();
+    
+    res.json({ 
+      success: true, 
+      discovered: discoveredAddresses.length,
+      addresses: discoveredAddresses.slice(0, 10), // Return first 10 for preview
+      stats: monitor.stats.discoveryStats
+    });
+  } catch (error) {
+    console.error('Error in manual discovery:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Get current prices
  */
 app.get('/api/prices', (req, res) => {

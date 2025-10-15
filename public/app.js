@@ -437,19 +437,19 @@ function renderPositions() {
         <div class="position-details">
           <div class="detail-row">
             <span class="detail-label">Size:</span>
-            <span class="detail-value">${Math.abs(pos.size).toFixed(4)}</span>
+            <span class="detail-value">${Math.abs(pos.size || 0).toFixed(4)} ${pos.asset}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">Notional:</span>
-            <span class="detail-value">$${formatNumber(pos.positionValue)}</span>
+            <span class="detail-label">Notional (USD Value):</span>
+            <span class="detail-value">$${formatNumber(pos.positionValue || 0)}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Entry:</span>
-            <span class="detail-value">$${entryPrice.toFixed(2)}</span>
+            <span class="detail-value">$${(entryPrice || 0).toFixed(2)}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Current:</span>
-            <span class="detail-value">$${currentPrice.toFixed(2)}</span>
+            <span class="detail-value">$${(currentPrice || 0).toFixed(2)}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Leverage:</span>
@@ -457,20 +457,20 @@ function renderPositions() {
           </div>
           <div class="detail-row">
             <span class="detail-label">PnL:</span>
-            <span class="detail-value ${pnlPercent >= 0 ? 'positive' : 'negative'}">
-              ${pnlPercent >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}%
+            <span class="detail-value ${(pnlPercent || 0) >= 0 ? 'positive' : 'negative'}">
+              ${(pnlPercent || 0) >= 0 ? '+' : ''}${(pnlPercent || 0).toFixed(2)}%
             </span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Liq Price:</span>
-            <span class="detail-value ${liqDistance < 10 ? 'warning' : ''}">
+            <span class="detail-value ${(liqDistance || 0) < 10 ? 'warning' : ''}">
               $${pos.liquidationPx ? parseFloat(pos.liquidationPx).toFixed(2) : 'N/A'}
             </span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Distance:</span>
-            <span class="detail-value ${liqDistance < 10 ? 'warning' : ''}">
-              ${liqDistance.toFixed(2)}%
+            <span class="detail-value ${(liqDistance || 0) < 10 ? 'warning' : ''}">
+              ${(liqDistance || 0).toFixed(2)}%
             </span>
           </div>
         </div>
@@ -771,33 +771,40 @@ function renderWhales() {
   }
   
   const html = state.whales.map((whale, index) => {
+    // Safe number handling with fallbacks
+    const roi = isNaN(whale.roi) || whale.roi === null || whale.roi === undefined ? 0 : whale.roi;
+    const totalPnL = isNaN(whale.totalPnL) || whale.totalPnL === null || whale.totalPnL === undefined ? 0 : whale.totalPnL;
+    const marginUsed = isNaN(whale.marginUsed) || whale.marginUsed === null || whale.marginUsed === undefined ? 0 : whale.marginUsed;
+    const totalTrades = isNaN(whale.totalTrades) || whale.totalTrades === null || whale.totalTrades === undefined ? 0 : whale.totalTrades;
+    const realizedPnL = isNaN(whale.realizedPnL) || whale.realizedPnL === null || whale.realizedPnL === undefined ? 0 : whale.realizedPnL;
+    
     return `
       <div class="whale-card">
         <div class="whale-header">
           <span style="font-weight: bold; color: #00ff41;">${index + 1}.</span>
-          <span class="detail-value ${whale.roi >= 0 ? 'positive' : 'negative'}">
-            ${whale.roi >= 0 ? '+' : ''}${whale.roi.toFixed(2)}% ROI
+          <span class="detail-value ${roi >= 0 ? 'positive' : 'negative'}">
+            ${roi >= 0 ? '+' : ''}${roi.toFixed(2)}% ROI
           </span>
         </div>
         <div class="whale-details">
           <div class="detail-row">
             <span class="detail-label">Total PnL:</span>
-            <span class="detail-value ${whale.totalPnL >= 0 ? 'positive' : 'negative'}">
-              ${whale.totalPnL >= 0 ? '+' : ''}$${formatNumber(Math.abs(whale.totalPnL))}
+            <span class="detail-value ${totalPnL >= 0 ? 'positive' : 'negative'}">
+              ${totalPnL >= 0 ? '+' : ''}$${formatNumber(Math.abs(totalPnL))}
             </span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Margin:</span>
-            <span class="detail-value">$${formatNumber(whale.marginUsed)}</span>
+            <span class="detail-value">$${formatNumber(marginUsed)}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Trades:</span>
-            <span class="detail-value">${whale.totalTrades}</span>
+            <span class="detail-value">${totalTrades}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Realized:</span>
-            <span class="detail-value ${whale.realizedPnL >= 0 ? 'positive' : 'negative'}">
-              ${whale.realizedPnL >= 0 ? '+' : ''}$${formatNumber(Math.abs(whale.realizedPnL))}
+            <span class="detail-value ${realizedPnL >= 0 ? 'positive' : 'negative'}">
+              ${realizedPnL >= 0 ? '+' : ''}$${formatNumber(Math.abs(realizedPnL))}
             </span>
           </div>
         </div>
@@ -1043,6 +1050,54 @@ function getAlertIcon(type) {
     'HYPERLENS_INSIGHT': '💡'
   };
   return icons[type] || '📢';
+}
+
+// Manual discovery trigger
+async function triggerDiscovery() {
+  const btn = document.getElementById('discoveryBtn');
+  const originalText = btn.textContent;
+  
+  btn.textContent = '🔍 Discovering...';
+  btn.disabled = true;
+  
+  try {
+    const response = await fetch('/api/discover-addresses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Update the discovery stats immediately
+      renderDiscoveryStats();
+      
+      // Show success message
+      btn.textContent = `✅ Found ${result.discovered}`;
+      btn.style.background = 'rgba(0, 255, 65, 0.2)';
+      
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+        btn.disabled = false;
+      }, 3000);
+    } else {
+      throw new Error(result.error || 'Discovery failed');
+    }
+    
+  } catch (error) {
+    console.error('Discovery error:', error);
+    btn.textContent = '❌ Failed';
+    btn.style.background = 'rgba(255, 68, 68, 0.2)';
+    
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.background = '';
+      btn.disabled = false;
+    }, 3000);
+  }
 }
 
 // Initialize on load

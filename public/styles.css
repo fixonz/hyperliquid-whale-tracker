@@ -47,11 +47,15 @@ body {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  width: 100%;
 }
 
 .heatmap-bars {
   min-width: 100%;
   width: max-content;
+  max-width: 100%;
+  flex-wrap: nowrap;
 }
 
 /* Wallet address styles */
@@ -719,6 +723,36 @@ body {
   background: linear-gradient(135deg, rgba(79, 195, 247, 0.1), rgba(79, 195, 247, 0.05));
 }
 
+/* Discovery button styles */
+.discovery-btn {
+  padding: 8px 16px;
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  color: #00ff41;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.discovery-btn:hover {
+  background: rgba(0, 255, 65, 0.2);
+  border-color: #00ff41;
+  transform: translateY(-1px);
+}
+
+.discovery-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.discovery-btn:active {
+  transform: translateY(0);
+}
+
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
@@ -968,6 +1002,9 @@ h2 {
   .whale-card {
     padding: 10px;
     margin-bottom: 8px;
+    max-width: 100%;
+    overflow-x: hidden;
+    word-wrap: break-word;
   }
   
   .positions-container,
@@ -1060,6 +1097,38 @@ h2 {
     height: 20px;
   }
   
+  /* Mobile heatmap constraints */
+  .heatmap-container {
+    max-width: 100vw;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  
+  .heatmap-bars {
+    min-width: 100%;
+    width: max-content;
+    max-width: 100vw;
+    padding: 10px 5px;
+  }
+  
+  .heatmap-bar {
+    min-width: 15px;
+    max-width: calc(100vw / 15);
+    flex: 0 0 auto;
+  }
+  
+  .heatmap-bar-label {
+    font-size: 8px;
+    bottom: -25px;
+  }
+  
+  .heatmap-tooltip {
+    font-size: 11px;
+    padding: 8px;
+    min-width: 180px;
+    max-width: 90vw;
+  }
+  
   /* Heatmap header mobile */
   .heatmap-stats {
     flex-direction: column;
@@ -1110,10 +1179,19 @@ h2 {
   
   .heatmap-bars {
     height: 150px;
+    padding: 5px 2px;
+    gap: 1px;
   }
   
   .heatmap-bar {
-    min-width: 12px;
+    min-width: 10px;
+    max-width: calc(100vw / 20);
+    flex: 0 0 auto;
+  }
+  
+  .heatmap-bar-label {
+    font-size: 7px;
+    bottom: -20px;
   }
   
   .pie-chart {
@@ -1137,6 +1215,22 @@ h2 {
   .cascade-label {
     min-width: 80px;
     font-size: 11px;
+  }
+  
+  /* Extra small screens - prevent any overflow */
+  .heatmap-container {
+    max-width: 100vw;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .position-details,
+  .alert-details,
+  .whale-details {
+    font-size: 11px;
+    gap: 4px;
   }
 }
 
@@ -1385,6 +1479,7 @@ h2 {
 .heatmap-bar {
   flex: 1;
   min-width: 20px;
+  max-width: calc(100% / 20); /* Ensure bars don't exceed container */
   position: relative;
   cursor: pointer;
   transition: opacity 0.2s;
@@ -1499,6 +1594,9 @@ h2 {
 .whales-container {
   max-height: 500px;
   overflow-y: auto;
+  overflow-x: hidden;
+  max-width: 100%;
+  width: 100%;
 }
 
 .position-card,

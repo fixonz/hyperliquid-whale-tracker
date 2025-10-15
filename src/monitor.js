@@ -20,8 +20,8 @@ class LiquidationMonitor {
       enableConsole: true  // Enable console alerts for real-time notifications
     });
     
-    // Enable digest mode (5-minute summaries)
-    this.digestManager = new DigestManager(this.alertManager, 5);
+    // Enable digest mode (7-minute summaries)
+    this.digestManager = new DigestManager(this.alertManager, 7);
 
     this.knownAddresses = new Set();
     this.currentPrices = {};
@@ -145,16 +145,52 @@ class LiquidationMonitor {
   }
 
   /**
-   * Continuously find active addresses from recent trades
+   * Continuously find active addresses from recent trades and Hyperlens.io
    */
   async findActiveAddressesFromTrades() {
-    console.log(chalk.cyan('🔍 Finding active addresses from recent trades (last 2000 per asset)...'));
+    console.log(chalk.cyan('🔍 Finding active addresses from Hyperlens.io and recent trades...'));
     
     try {
-      const assets = ['BTC', 'ETH', 'SOL', 'ARB', 'OP', 'XRP', 'DOGE', 'MATIC', 'AVAX', 'LINK', 'UNI', 'ATOM'];
       const activeAddresses = new Set();
+      let hyperlensAddresses = 0;
       
-      for (const asset of assets) {
+      // 1. Get addresses from Hyperlens.io
+      try {
+        const { HyperlensAPI } = await import('./api/hyperlens.js');
+        const hyperlensAPI = new HyperlensAPI();
+        
+        // Get addresses from fills
+        const fills = await hyperlensAPI.getFills({ limit: 1000 });
+        if (fills && fills.length > 0) {
+          for (const fill of fills) {
+            if (fill.user && fill.user !== '0x0000000000000000000000000000000000000000') {
+              activeAddresses.add(fill.user);
+              hyperlensAddresses++;
+            }
+          }
+          console.log(chalk.gray(`  📊 Hyperlens fills: ${fills.length} trades, ${hyperlensAddresses} unique addresses`));
+        }
+        
+        // Get addresses from liquidations
+        const liquidations = await hyperlensAPI.getLatestLiquidations();
+        if (liquidations && liquidations.length > 0) {
+          for (const liq of liquidations) {
+            if (liq.user && liq.user !== '0x0000000000000000000000000000000000000000') {
+              activeAddresses.add(liq.user);
+            }
+          }
+          console.log(chalk.gray(`  🔥 Hyperlens liquidations: ${liquidations.length} events`));
+        }
+        
+      } catch (error) {
+        console.log(chalk.yellow(`  ⚠️ Hyperlens.io discovery error: ${error.message}`));
+      }
+      
+      // 2. Get addresses from Hyperliquid recent trades (fallback)
+      const assets = ['BTC', 'ETH', 'SOL', 'ARB', 'OP', 'XRP', 'DOGE', 'MATIC', 'AVAX', 'LINK', 'UNI', 'ATOM'];
+      let hyperliquidAddresses = 0;
+      
+      for (const asset of assets.slice(0, 6)) { // Limit to top 6 assets to avoid rate limits
         try {
           const response = await this.api.client.post('/info', {
             type: 'recentTrades',
@@ -162,27 +198,30 @@ class LiquidationMonitor {
           });
           
           if (response.data && Array.isArray(response.data)) {
-            // Extract unique addresses from trades (up to 2000 trades per asset)
-            const tradesToCheck = response.data.slice(0, 2000);
+            const tradesToCheck = response.data.slice(0, 500); // Reduced from 2000
             for (const trade of tradesToCheck) {
               for (const user of trade.users) {
                 if (user && user !== '0x0000000000000000000000000000000000000000') {
                   activeAddresses.add(user);
+                  hyperliquidAddresses++;
                 }
               }
             }
-            console.log(chalk.gray(`  ${asset}: ${tradesToCheck.length} trades, ${tradesToCheck.reduce((acc, t) => acc + t.users.length, 0)} participants`));
+            console.log(chalk.gray(`  ${asset}: ${tradesToCheck.length} trades`));
           }
           
           // Rate limiting
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 200));
           
         } catch (error) {
           console.log(chalk.yellow(`  ⚠️ Error fetching ${asset} trades: ${error.message}`));
         }
       }
       
-      console.log(chalk.green(`📊 Found ${activeAddresses.size} unique active addresses from trades`));
+      console.log(chalk.green(`📊 Discovery Summary:`));
+      console.log(chalk.green(`  🔍 Total unique addresses found: ${activeAddresses.size}`));
+      console.log(chalk.green(`  📊 From Hyperlens.io: ${hyperlensAddresses}`));
+      console.log(chalk.green(`  🔄 From Hyperliquid: ${hyperliquidAddresses}`));
       
       // Update discovery stats
       this.stats.discoveryStats.lastDiscovery = Date.now();
@@ -204,6 +243,8 @@ class LiquidationMonitor {
       
       if (newAddresses > 0) {
         console.log(chalk.green.bold(`✅ Added ${newAddresses} new active addresses to tracking`));
+      } else {
+        console.log(chalk.gray(`  ℹ️ No new addresses to add (${activeAddresses.size} already tracked)`));
       }
       
       return Array.from(activeAddresses);
@@ -417,8 +458,7 @@ class LiquidationMonitor {
         }
         
         // Find active addresses from recent trades every 10 minutes
-        const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
-        if (!this.lastActiveDiscovery || Date.now() - this.lastActiveDiscovery > tenMinutesAgo) {
+        if (!this.lastActiveDiscovery || Date.now() - this.lastActiveDiscovery > (10 * 60 * 1000)) {
           await this.findActiveAddressesFromTrades();
           this.lastActiveDiscovery = Date.now();
         }
@@ -481,6 +521,9 @@ class LiquidationMonitor {
       await this.checkRecentLiquidations();
       this.lastLiquidationCheck = Date.now();
     }
+    
+    // 7. Update digest with Hyperlens.io data
+    await this.updateDigestWithHyperlensData();
 
     const scanDuration = Date.now() - scanStart;
     
@@ -691,12 +734,72 @@ class LiquidationMonitor {
         const whale = this.whaleTracker.getWhale(pos.address);
         await this.alertManager.sendBigPositionAlert(pos, whale);
         console.log(chalk.yellow.bold(`🚨 MASSIVE POSITION: ${pos.asset} ${pos.side} $${this.formatNumber(pos.notionalValue)}`));
+        
+        // Add to digest as whale activity
+        this.digestManager.addWhaleOpen(pos, whale);
       }
       
       // Add high-risk positions to digest
       if (pos.isAtRisk && pos.notionalValue >= this.whaleThreshold) {
         this.digestManager.addLiquidationRisk(pos);
       }
+      
+      // Add all significant positions to digest for 7-minute summary
+      if (pos.notionalValue >= this.whaleThreshold) {
+        const whale = this.whaleTracker.getWhale(pos.address);
+        this.digestManager.addWhaleOpen(pos, whale);
+      }
+    }
+  }
+
+  /**
+   * Update digest with Hyperlens.io data
+   */
+  async updateDigestWithHyperlensData() {
+    try {
+      const { HyperlensAPI } = await import('./api/hyperlens.js');
+      const hyperlensAPI = new HyperlensAPI();
+      
+      // Get recent fills from Hyperlens.io
+      const fills = await hyperlensAPI.getFills({ limit: 100 });
+      if (fills && fills.length > 0) {
+        for (const fill of fills.slice(0, 50)) { // Process top 50 fills
+          if (fill.user && fill.notional && Math.abs(fill.notional) >= this.whaleThreshold) {
+            // Add significant fills to digest
+            this.digestManager.addWhaleOpen({
+              address: fill.user,
+              asset: fill.coin || 'UNKNOWN',
+              side: fill.side === 'B' ? 'LONG' : 'SHORT',
+              size: Math.abs(fill.size || 0),
+              entryPrice: fill.px || 0,
+              positionValue: Math.abs(fill.notional || 0),
+              leverage: 1, // Default leverage
+              timestamp: fill.time || Date.now()
+            }, null);
+          }
+        }
+      }
+      
+      // Get recent liquidations from Hyperlens.io
+      const liquidations = await hyperlensAPI.getLatestLiquidations();
+      if (liquidations && liquidations.length > 0) {
+        for (const liq of liquidations.slice(0, 20)) { // Process top 20 liquidations
+          if (liq.user && liq.notional) {
+            this.digestManager.addLiquidation({
+              address: liq.user,
+              asset: liq.coin || 'UNKNOWN',
+              side: liq.side === 'B' ? 'LONG' : 'SHORT',
+              notionalValue: Math.abs(liq.notional || 0),
+              leverage: 1,
+              timestamp: liq.time || Date.now()
+            });
+          }
+        }
+      }
+      
+    } catch (error) {
+      // Silently handle Hyperlens.io errors to avoid spam
+      console.log(chalk.gray(`  ℹ️ Hyperlens.io digest update: ${error.message}`));
     }
   }
 

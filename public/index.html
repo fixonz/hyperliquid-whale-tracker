@@ -99,7 +99,12 @@
       </div>
 
       <div class="panel discovery-panel" id="discovery">
-        <h2>🔍 Active Address Discovery</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h2>🔍 Active Address Discovery</h2>
+          <button onclick="triggerDiscovery()" class="discovery-btn" id="discoveryBtn">
+            🔍 Discover Now
+          </button>
+        </div>
         <div class="discovery-stats">
           <div class="discovery-stat">
             <span class="discovery-label">Last Discovery:</span>
