@@ -1008,7 +1008,7 @@ function renderDigestStats() {
         <div class="position-entry ${hotClass}">
           <span class="position-icon">${hotIcon}</span>
           <span class="position-details">
-            ${pos.asset} $${formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x
+            ${pos.asset} <strong>${pos.side}</strong> $${formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x
             ${isHot ? '<span class="hot-badge">HOT!</span>' : ''}
           </span>
           <span class="position-address" onclick="copyAddress('${pos.address}')" title="Click to copy">

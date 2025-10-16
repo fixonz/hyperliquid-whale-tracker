@@ -265,27 +265,33 @@
             fillsSection.innerHTML = `
                 <h2>💹 Recent Trading Activity</h2>
                 <div id="recent-fills-list">
-                    ${fills.slice(0, 10).map(fill => `
-                        <div class="fill-item">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <strong>${fill.coin || 'UNKNOWN'}</strong>
-                                    <span style="margin-left: 10px; color: ${fill.side === 'B' ? '#00ff41' : '#ff4444'};">
-                                        ${fill.side === 'B' ? 'BUY' : 'SELL'}
-                                    </span>
-                                    <span style="margin-left: 10px; font-size: 12px; color: #ccc;">
-                                        ${Math.abs(fill.sz || 0)} @ $${(fill.px || 0).toFixed(2)}
-                                    </span>
+                    ${fills.slice(0, 10).map(fill => {
+                        const pnl = fill.closedPnl || 0;
+                        const isWin = pnl > 0;
+                        const positionType = fill.side === 'B' ? 'LONG' : 'SHORT';
+                        
+                        return `
+                            <div class="fill-item">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <strong>${fill.coin || 'UNKNOWN'}</strong>
+                                        <span style="margin-left: 10px; color: ${isWin ? '#00ff41' : '#ff4444'};">
+                                            ${isWin ? '✅ WON' : '❌ LOST'} ${positionType}
+                                        </span>
+                                        <span style="margin-left: 10px; font-size: 12px; color: #ccc;">
+                                            ${Math.abs(fill.sz || 0)} @ $${(fill.px || 0).toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div style="color: ${isWin ? '#00ff41' : '#ff4444'}; font-weight: bold;">
+                                        ${isWin ? '+' : ''}$${formatNumber(Math.abs(pnl))}
+                                    </div>
                                 </div>
-                                <div style="color: ${fill.closedPnl >= 0 ? '#00ff41' : '#ff4444'}; font-weight: bold;">
-                                    ${fill.closedPnl >= 0 ? '+' : ''}$${formatNumber(Math.abs(fill.closedPnl || 0))}
+                                <div style="font-size: 12px; color: #ccc; margin-top: 5px;">
+                                    ${new Date(fill.time).toLocaleString()}
                                 </div>
                             </div>
-                            <div style="font-size: 12px; color: #ccc; margin-top: 5px;">
-                                ${new Date(fill.time).toLocaleString()}
-                            </div>
-                        </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             `;
             

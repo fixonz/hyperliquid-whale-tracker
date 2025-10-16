@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import chalk from 'chalk';
 import { HyperliquidAPI } from './api/hyperliquid.js';
 import { WhaleTracker } from './trackers/whaleTracker.js';
+import { HyperlensWhaleTracker } from './trackers/hyperlensWhaleTracker.js';
 import { LiquidationAnalyzer } from './analyzers/liquidationAnalyzer.js';
 import { HeatmapGenerator } from './analyzers/heatmapGenerator.js';
 import { AlertManager } from './alerts/alertManager.js';
@@ -13,6 +14,7 @@ class LiquidationMonitor {
   constructor() {
     this.api = new HyperliquidAPI(process.env.HYPERLIQUID_API_URL);
     this.whaleTracker = new WhaleTracker();
+    this.hyperlensWhaleTracker = new HyperlensWhaleTracker();
     this.liquidationAnalyzer = new LiquidationAnalyzer();
     this.heatmapGenerator = new HeatmapGenerator();
     this.alertManager = new AlertManager({
