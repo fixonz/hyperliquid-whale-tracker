@@ -70,15 +70,19 @@
         const pathParts = window.location.pathname.split('/');
         const address = pathParts[pathParts.length - 1];
         
+        // Get highlight parameter from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const highlight = urlParams.get('highlight'); // Format: "BTC_LONG" or "ETH_SHORT"
+        
         if (!address || address.length !== 42 || !address.startsWith('0x')) {
             document.getElementById('error').style.display = 'block';
             document.getElementById('loading').style.display = 'none';
             document.getElementById('error').innerHTML = '<div>❌ Invalid address format</div>';
         } else {
-            loadAddressSummary(address);
+            loadAddressSummary(address, highlight);
         }
         
-        async function loadAddressSummary(address) {
+        async function loadAddressSummary(address, highlight = null) {
             try {
                 document.getElementById('address-text').textContent = address;
                 
@@ -123,7 +127,7 @@
                 const performance = performanceData.status === 'fulfilled' ? performanceData.value : null;
                 
                 // Render the data
-                renderSummaryData(address, portfolio, positions, fills, liquidations, performance);
+                renderSummaryData(address, portfolio, positions, fills, liquidations, performance, highlight);
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('summary-content').style.display = 'block';
@@ -246,7 +250,7 @@
                             </div>
                         </div>
                         <div style="font-size: 12px; color: #ccc; margin-top: 5px;">
-                            ${new Date(liq.time * 1000).toLocaleString()}
+                            ${liq.time ? new Date(liq.time * 1000).toLocaleString() : 'Unknown time'}
                         </div>
                     </div>
                 `).join('');
@@ -310,17 +314,28 @@
             return num.toFixed(2);
         }
         
+        // Copy address to clipboard
         function copyAddress(address) {
             navigator.clipboard.writeText(address).then(() => {
-                // Simple feedback
-                const button = event.target;
-                const originalText = button.textContent;
-                button.textContent = 'Copied!';
-                button.style.background = 'rgba(0, 255, 65, 0.3)';
+                // Show feedback
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                btn.style.background = 'rgba(0, 255, 65, 0.2)';
+                
                 setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.background = '';
-                }, 1000);
+                    btn.textContent = originalText;
+                    btn.style.background = '';
+                }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy address:', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = address;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
             });
         }
     </script>

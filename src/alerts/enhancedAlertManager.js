@@ -410,7 +410,7 @@ ${side} ${position.asset}
     let msg = baseMessage;
     
     if (address) {
-      msg += `\n\n🔗 <a href="https://app.hyperliquid.xyz/explorer/account?address=${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
+      msg += `\n\n🔗 <a href="https://hyperliquid-alerts.onrender.com/summary/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
     }
     
     // Add API attribution every 5th alert to avoid spam

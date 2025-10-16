@@ -1011,7 +1011,7 @@ function renderDigestStats() {
             ${pos.asset} <strong>${pos.side}</strong> $${formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x
             ${isHot ? '<span class="hot-badge">HOT!</span>' : ''}
           </span>
-          <span class="position-address" onclick="copyAddress('${pos.address}')" title="Click to copy">
+          <span class="position-address" onclick="viewSummary('${pos.address}', '${pos.asset}', '${pos.side}')" title="Click to view summary">
             ${pos.address.slice(0, 6)}...${pos.address.slice(-4)}
           </span>
         </div>
@@ -1139,6 +1139,37 @@ async function triggerDiscovery() {
       btn.disabled = false;
     }, 3000);
   }
+}
+
+// View summary page with highlighted position
+function viewSummary(address, asset, side) {
+  const url = `/summary/${address}?highlight=${asset}_${side}`;
+  window.open(url, '_blank');
+}
+
+// Copy address to clipboard
+function copyAddress(address) {
+  navigator.clipboard.writeText(address).then(() => {
+    // Show feedback
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    btn.style.color = '#00ff41';
+    
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.color = '';
+    }, 1500);
+  }).catch(err => {
+    console.error('Failed to copy address:', err);
+    // Fallback for older browsers
+    const textArea = document.createElement('textarea');
+    textArea.value = address;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+  });
 }
 
 // Initialize on load

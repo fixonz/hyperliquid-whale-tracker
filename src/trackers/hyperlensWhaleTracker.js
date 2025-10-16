@@ -1,11 +1,15 @@
 import { HyperlensAPI } from '../api/hyperlens.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export class HyperlensWhaleTracker {
   constructor() {
     this.api = new HyperlensAPI();
-    this.whalesFile = path.join(process.dirname, '../data/hyperlens-whales.json');
+    this.whalesFile = path.join(__dirname, '../../data/hyperlens-whales.json');
     this.whales = new Map();
     this.lastUpdate = null;
   }

@@ -356,7 +356,7 @@ export class AlertManager {
         msg += `${sideEmoji} #${asset} - ${sideText}\n`;
         msg += `Size: $${notionalFormatted} at $${Number(alert.entryPrice || 0).toLocaleString()}\n`;
         msg += `Leverage: ${Number(alert.leverage || 0).toFixed(1)}x\n`;
-        msg += `-- <a href="https://app.hyperliquid.xyz/explorer/account?address=${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
+        msg += `-- <a href="https://hyperliquid-alerts.onrender.com/summary/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
         
         return msg;
       }
@@ -374,7 +374,7 @@ export class AlertManager {
         let msg = isTest ? `🧪 TEST LIQUIDATION ALERT\n` : '';
         msg += `${sideEmoji} #${asset} - ${sideText}\n`;
         msg += `Liquidated $${notionalFormatted} at $${Number(price).toLocaleString()}\n`;
-        msg += `-- <a href="https://app.hyperliquid.xyz/explorer/account?address=${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
+        msg += `-- <a href="https://hyperliquid-alerts.onrender.com/summary/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
         
         return msg;
       }

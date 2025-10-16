@@ -140,37 +140,7 @@ body {
   margin-bottom: 10px;
 }
 
-.stat-card {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(0, 255, 65, 0.3);
-  border-radius: 6px;
-  padding: 8px 12px;
-  text-align: center;
-  flex: 1;
-  min-width: 0;
-  min-width: 80px;
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-  background: rgba(0, 255, 65, 0.1);
-  border-color: #00ff41;
-  transform: translateY(-2px);
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: bold;
-  color: #00ff41;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 11px;
-  color: #888;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
+/* Removed duplicate - using the main definition below */
 
 /* 🔥 Heatmap Visualization */
 .heatmap-visualization {
@@ -1112,21 +1082,7 @@ h2 {
   border-radius: 4px;
 }
 
-.stat-label {
-  font-size: 12px;
-  color: #6b7280;
-  margin-bottom: 5px;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #00ff41;
-}
-
-.stat-value.status {
-  font-size: 16px;
-}
+/* Removed duplicate - using the main definition below */
 
 .main-grid {
   display: grid;
