@@ -377,7 +377,7 @@ export class DigestManager {
         const emoji = pos.side === 'LONG' ? '🟢' : '🔴';
         const wallet = pos.address ? `${pos.address.slice(0, 6)}...${pos.address.slice(-4)}` : 'Unknown';
         message += `${emoji} ${pos.asset} ${pos.side} $${this.formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x\n`;
-        message += `   <a href="https://hyperliquid-alerts.onrender.com/summary/${pos.address}">${wallet}</a>\n`;
+        message += `   <a href="https://hyperliquid-whale-tracker.onrender.com/summary/${pos.address}">${wallet}</a>\n`;
       });
     }
 

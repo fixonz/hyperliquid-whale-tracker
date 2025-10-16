@@ -750,13 +750,43 @@ class LiquidationMonitor {
   async analyzePositions(positions) {
     const analysis = this.liquidationAnalyzer.analyzePositions(positions, this.currentPrices);
 
+    // Group positions by token for grouped alerts
+    const bigPositionsByToken = {};
+    const hotPositionsByToken = {};
+    const bigPositions = [];
+    const hotPositions = [];
+
     // Check for big positions and liquidation risks
     for (const pos of analysis) {
-      // Check for BIG positions ($10M+) - send alert AND pin
+      // Check for BIG positions ($10M+) - collect for grouped alerts
       if (pos.notionalValue >= 10000000) { // $10M+ threshold
         const whale = this.whaleTracker.getWhale(pos.address);
-        await this.alertManager.sendBigPositionAlert(pos, whale);
-        console.log(chalk.red.bold(`🚨 BIG POSITION: ${pos.asset} ${pos.side} $${this.formatNumber(pos.notionalValue)} - ALERT & PIN SENT`));
+        pos.whaleRoi = whale?.roi || 0;
+        pos.currentPrice = this.currentPrices[pos.asset] || pos.entryPrice;
+        
+        // Group by token
+        if (!bigPositionsByToken[pos.asset]) {
+          bigPositionsByToken[pos.asset] = [];
+        }
+        bigPositionsByToken[pos.asset].push(pos);
+        bigPositions.push(pos);
+        
+        console.log(chalk.red.bold(`🚨 BIG POSITION: ${pos.asset} ${pos.side} $${this.formatNumber(pos.notionalValue)} - COLLECTED FOR GROUPED ALERT`));
+      }
+      // Check for HOT positions ($1M-$10M) - collect for grouped alerts
+      else if (pos.notionalValue >= 1000000) { // $1M+ threshold
+        const whale = this.whaleTracker.getWhale(pos.address);
+        pos.whaleRoi = whale?.roi || 0;
+        pos.currentPrice = this.currentPrices[pos.asset] || pos.entryPrice;
+        
+        // Group by token
+        if (!hotPositionsByToken[pos.asset]) {
+          hotPositionsByToken[pos.asset] = [];
+        }
+        hotPositionsByToken[pos.asset].push(pos);
+        hotPositions.push(pos);
+        
+        console.log(chalk.yellow.bold(`🔥 HOT POSITION: ${pos.asset} ${pos.side} $${this.formatNumber(pos.notionalValue)} - COLLECTED FOR GROUPED ALERT`));
       }
       
       // Add significant positions to digest (over whale threshold)
@@ -769,6 +799,18 @@ class LiquidationMonitor {
       if (pos.isAtRisk && pos.notionalValue >= this.whaleThreshold) {
         this.digestManager.addLiquidationRisk(pos);
       }
+    }
+
+    // Send grouped big position alerts if we have any
+    if (Object.keys(bigPositionsByToken).length > 0) {
+      await this.alertManager.sendGroupedBigPositionAlerts(bigPositionsByToken);
+      console.log(chalk.red.bold(`🚨 GROUPED BIG POSITION ALERTS SENT: ${Object.keys(bigPositionsByToken).length} tokens, ${bigPositions.length} total positions`));
+    }
+
+    // Send grouped hot position alerts if we have any
+    if (Object.keys(hotPositionsByToken).length > 0) {
+      await this.alertManager.sendGroupedHotPositionAlerts(hotPositionsByToken);
+      console.log(chalk.yellow.bold(`🔥 GROUPED HOT POSITION ALERTS SENT: ${Object.keys(hotPositionsByToken).length} tokens, ${hotPositions.length} total positions`));
     }
   }
 

@@ -16,11 +16,84 @@ export class AlertManager {
     this.alertHistory = [];
     this.recentAlerts = new Set(); // Prevent duplicate alerts
     this.copyTradingDetector = new CopyTradingDetector();
-    this.liquidationThreshold = 35000; // Only show liquidations over $35K
+    this.liquidationThreshold = 100000; // Only show liquidations over $100K
   }
 
   /**
-   * Send big position alert (10M+)
+   * Send grouped big position alerts by token (10M+)
+   */
+  async sendGroupedBigPositionAlerts(positionsByToken) {
+    for (const [token, positions] of Object.entries(positionsByToken)) {
+      if (positions.length === 0) continue;
+      
+      // For single positions, use the legacy method to maintain existing behavior
+      if (positions.length === 1) {
+        await this.sendBigPositionAlert(positions[0], { roi: positions[0].whaleRoi });
+        continue;
+      }
+      
+      // Sort positions by size (largest first)
+      positions.sort((a, b) => b.notionalValue - a.notionalValue);
+      
+      const totalNotional = positions.reduce((sum, pos) => sum + pos.notionalValue, 0);
+      const longPositions = positions.filter(p => p.side === 'LONG');
+      const shortPositions = positions.filter(p => p.side === 'SHORT');
+      
+      let message = `🚨 MAJOR ${token} POSITIONS\n\n`;
+      message += `💰 Total Volume: $${this.formatLargeNumber(totalNotional)}\n`;
+      message += `📊 Positions: ${positions.length} (${longPositions.length}L/${shortPositions.length}S)\n\n`;
+      
+      // Add each position with PnL and liquidation info
+      for (let i = 0; i < positions.length; i++) {
+        const pos = positions[i];
+        const wallet = pos.address ? `${pos.address.slice(0, 6)}...${pos.address.slice(-4)}` : 'Unknown';
+        
+        // Calculate PnL and liquidation percentage
+        const currentPrice = pos.currentPrice || pos.entryPrice;
+        const pnlPercent = pos.entryPrice ? ((currentPrice - pos.entryPrice) / pos.entryPrice * 100 * (pos.side === 'LONG' ? 1 : -1)) : 0;
+        const liquidationPercent = pos.liquidationPx && pos.entryPrice ? 
+          Math.abs((pos.liquidationPx - pos.entryPrice) / pos.entryPrice * 100) : 0;
+        
+        message += `${i + 1}. ${pos.side} $${this.formatLargeNumber(pos.notionalValue)}\n`;
+        message += `   👤 <a href="https://hyperliquid-whale-tracker.onrender.com/summary/${pos.address}">${wallet}</a>\n`;
+        message += `   📊 Entry: $${Number(pos.entryPrice || 0).toLocaleString()}\n`;
+        message += `   ⚡ Leverage: ${Number(pos.leverage || 0).toFixed(1)}x\n`;
+        
+        // Add PnL info
+        if (pnlPercent !== 0) {
+          const pnlEmoji = pnlPercent > 0 ? '📈' : '📉';
+          message += `   ${pnlEmoji} PnL: ${pnlPercent > 0 ? '+' : ''}${pnlPercent.toFixed(2)}%\n`;
+        }
+        
+        // Add liquidation risk info
+        if (liquidationPercent > 0) {
+          const riskEmoji = liquidationPercent < 5 ? '🔴' : liquidationPercent < 10 ? '🟡' : '🟢';
+          message += `   ${riskEmoji} Liq Risk: ${liquidationPercent.toFixed(1)}%\n`;
+        }
+        
+        // Add whale ROI if available
+        if (pos.whaleRoi && pos.whaleRoi !== 0) {
+          message += `   📈 ROI: ${Number(pos.whaleRoi).toFixed(1)}%\n`;
+        }
+        
+        message += '\n';
+      }
+      
+      const alert = {
+        type: 'GROUPED_BIG_POSITIONS',
+        timestamp: Date.now(),
+        asset: token,
+        positions: positions,
+        totalNotional: totalNotional,
+        message: message
+      };
+
+      await this.sendAlert(alert, true); // true = pin this message
+    }
+  }
+
+  /**
+   * Send big position alert (10M+) - legacy method for single positions
    */
   async sendBigPositionAlert(position, whale) {
     const notional = Math.abs(position.size * position.entryPrice);
@@ -70,7 +143,7 @@ export class AlertManager {
                `💵 Size: $${this.formatLargeNumber(notional)}\n` +
                `📊 Entry: $${Number(position.entryPrice || 0).toLocaleString()}\n` +
                `⚡ Leverage: ${Number(position.leverage || 0).toFixed(1)}x\n` +
-               `👤 Wallet: <a href="https://hyperliquid-alerts.onrender.com/summary/${position.address}">${wallet}</a>\n` +
+               `👤 Wallet: <a href="https://hyperliquid-whale-tracker.onrender.com/summary/${position.address}">${wallet}</a>\n` +
                `${whale?.roi ? `📈 ROI: ${Number(whale.roi).toFixed(1)}%` : ''}` +
                walletStats
     };
@@ -79,7 +152,80 @@ export class AlertManager {
   }
 
   /**
-   * Send HOT position alert for positions $1M-$100M
+   * Send grouped HOT position alerts by token (1M-10M)
+   */
+  async sendGroupedHotPositionAlerts(positionsByToken) {
+    for (const [token, positions] of Object.entries(positionsByToken)) {
+      if (positions.length === 0) continue;
+      
+      // For single positions, use the legacy method to maintain existing behavior
+      if (positions.length === 1) {
+        await this.sendHotPositionAlert(positions[0], { roi: positions[0].whaleRoi });
+        continue;
+      }
+      
+      // Sort positions by size (largest first)
+      positions.sort((a, b) => b.notionalValue - a.notionalValue);
+      
+      const totalNotional = positions.reduce((sum, pos) => sum + pos.notionalValue, 0);
+      const longPositions = positions.filter(p => p.side === 'LONG');
+      const shortPositions = positions.filter(p => p.side === 'SHORT');
+      
+      let message = `🔥 HOT ${token} POSITIONS\n\n`;
+      message += `💰 Total Volume: $${this.formatLargeNumber(totalNotional)}\n`;
+      message += `📊 Positions: ${positions.length} (${longPositions.length}L/${shortPositions.length}S)\n\n`;
+      
+      // Add each position with PnL and liquidation info
+      for (let i = 0; i < positions.length; i++) {
+        const pos = positions[i];
+        const wallet = pos.address ? `${pos.address.slice(0, 6)}...${pos.address.slice(-4)}` : 'Unknown';
+        
+        // Calculate PnL and liquidation percentage
+        const currentPrice = pos.currentPrice || pos.entryPrice;
+        const pnlPercent = pos.entryPrice ? ((currentPrice - pos.entryPrice) / pos.entryPrice * 100 * (pos.side === 'LONG' ? 1 : -1)) : 0;
+        const liquidationPercent = pos.liquidationPx && pos.entryPrice ? 
+          Math.abs((pos.liquidationPx - pos.entryPrice) / pos.entryPrice * 100) : 0;
+        
+        message += `${i + 1}. ${pos.side} $${this.formatLargeNumber(pos.notionalValue)}\n`;
+        message += `   👤 <a href="https://hyperliquid-whale-tracker.onrender.com/summary/${pos.address}">${wallet}</a>\n`;
+        message += `   📊 Entry: $${Number(pos.entryPrice || 0).toLocaleString()}\n`;
+        message += `   ⚡ Leverage: ${Number(pos.leverage || 0).toFixed(1)}x\n`;
+        
+        // Add PnL info
+        if (pnlPercent !== 0) {
+          const pnlEmoji = pnlPercent > 0 ? '📈' : '📉';
+          message += `   ${pnlEmoji} PnL: ${pnlPercent > 0 ? '+' : ''}${pnlPercent.toFixed(2)}%\n`;
+        }
+        
+        // Add liquidation risk info
+        if (liquidationPercent > 0) {
+          const riskEmoji = liquidationPercent < 5 ? '🔴' : liquidationPercent < 10 ? '🟡' : '🟢';
+          message += `   ${riskEmoji} Liq Risk: ${liquidationPercent.toFixed(1)}%\n`;
+        }
+        
+        // Add whale ROI if available
+        if (pos.whaleRoi && pos.whaleRoi !== 0) {
+          message += `   📈 ROI: ${Number(pos.whaleRoi).toFixed(1)}%\n`;
+        }
+        
+        message += '\n';
+      }
+      
+      const alert = {
+        type: 'GROUPED_HOT_POSITIONS',
+        timestamp: Date.now(),
+        asset: token,
+        positions: positions,
+        totalNotional: totalNotional,
+        message: message
+      };
+
+      await this.sendAlert(alert, false); // Don't pin HOT positions
+    }
+  }
+
+  /**
+   * Send HOT position alert for positions $1M-$100M - legacy method for single positions
    */
   async sendHotPositionAlert(position, whale) {
     const notional = Math.abs(position.size * position.entryPrice);
@@ -125,7 +271,7 @@ export class AlertManager {
                `💰 ${position.asset} ${position.side}\n` +
                `💵 Size: $${this.formatLargeNumber(notional)}\n` +
                `⚡ Leverage: ${Number(position.leverage || 0).toFixed(1)}x\n` +
-               `👤 <a href="https://hyperliquid-alerts.onrender.com/summary/${position.address}">${wallet}</a>` +
+               `👤 <a href="https://hyperliquid-whale-tracker.onrender.com/summary/${position.address}">${wallet}</a>` +
                walletStats
     };
 
@@ -138,7 +284,7 @@ export class AlertManager {
   async sendLiquidationAlert(position, liquidationPrice) {
     const notional = Math.abs(position.size * liquidationPrice);
     
-    // Only send alerts for liquidations over $35K
+    // Only send alerts for liquidations over $100K
     if (notional < this.liquidationThreshold) {
       console.log(`💰 Liquidation below threshold: $${notional.toLocaleString()} (min: $${this.liquidationThreshold.toLocaleString()})`);
       return;
@@ -473,7 +619,7 @@ export class AlertManager {
         msg += `${sideEmoji} #${asset} - ${sideText}\n`;
         msg += `Size: $${notionalFormatted} at $${Number(alert.entryPrice || 0).toLocaleString()}\n`;
         msg += `Leverage: ${Number(alert.leverage || 0).toFixed(1)}x\n`;
-        msg += `-- <a href="https://hyperliquid-alerts.onrender.com/summary/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
+        msg += `-- <a href="https://hyperliquid-whale-tracker.onrender.com/summary/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
         
         return msg;
       }
@@ -497,7 +643,7 @@ export class AlertManager {
           msg += this.copyTradingDetector.formatCopyTradingAlert(alert, alert.copyTradingInfo);
         }
         
-        msg += `\n-- <a href="https://hyperliquid-alerts.onrender.com/summary/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
+        msg += `\n-- <a href="https://hyperliquid-whale-tracker.onrender.com/summary/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
         
         return msg;
       }
