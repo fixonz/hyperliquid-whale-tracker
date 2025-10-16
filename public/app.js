@@ -478,7 +478,7 @@ function renderPositions() {
           <span class="wallet-link" onclick="copyAddress('${pos.address}')" title="Click to copy address">
             Wallet: ${pos.address ? pos.address.slice(0, 10) + '...' + pos.address.slice(-8) : 'Unknown'}
           </span>
-          ${pos.address ? `<a href="https://app.hyperliquid.xyz/explorer/account?address=${pos.address}" target="_blank" class="explorer-link" title="View on Hyperliquid Explorer">🔗</a>` : ''}
+          ${pos.address ? `<a href="/summary/${pos.address}" class="hyperlens-link" title="View Summary & Liquidations">📊</a>` : ''}
         </div>
       </div>
     `;
@@ -552,7 +552,7 @@ function renderAlerts() {
                 <span class="wallet-link" onclick="copyAddress('${alert.address}')" title="Click to copy">
                   ${alert.address.slice(0, 10)}...${alert.address.slice(-8)}
                 </span>
-                <a href="https://app.hyperliquid.xyz/explorer/account?address=${alert.address}" target="_blank" class="explorer-link" title="View on Hyperliquid">🔗</a>
+                <a href="/summary/${alert.address}" class="hyperlens-link" title="View Summary & Liquidations">📊</a>
               </span>
               <div class="liquidation-details">
                 <span class="asset-tag">#${alert.asset}</span>
@@ -661,7 +661,7 @@ function renderAlerts() {
                 <span class="wallet-link" onclick="copyAddress('${alert.address}')" title="Click to copy">
                   ${alert.address.slice(0, 10)}...${alert.address.slice(-8)}
                 </span>
-                <a href="https://app.hyperliquid.xyz/explorer/account?address=${alert.address}" target="_blank" class="explorer-link" title="View on Hyperliquid">🔗</a>
+                <a href="/summary/${alert.address}" class="hyperlens-link" title="View Summary & Liquidations">📊</a>
               </span>
               <div class="liquidation-details">
                 <span class="asset-tag">#${alert.asset}</span>
@@ -724,7 +724,7 @@ function renderAlerts() {
                 <span class="wallet-link" onclick="copyAddress('${alert.address}')" title="Click to copy">
                   ${alert.address.slice(0, 10)}...${alert.address.slice(-8)}
                 </span>
-                <a href="https://app.hyperliquid.xyz/explorer/account?address=${alert.address}" target="_blank" class="explorer-link" title="View on Hyperliquid">🔗</a>
+                <a href="/summary/${alert.address}" class="hyperlens-link" title="View Summary & Liquidations">📊</a>
               </span>
             </div>
           ` : ''}
@@ -812,7 +812,7 @@ function renderWhales() {
           <span class="wallet-link" onclick="copyAddress('${whale.address}')" title="Click to copy address">
             ${whale.address.slice(0, 10)}...${whale.address.slice(-8)}
           </span>
-          <a href="https://app.hyperliquid.xyz/explorer/account?address=${whale.address}" target="_blank" class="explorer-link" title="View on Hyperliquid Explorer">🔗</a>
+          <a href="/summary/${whale.address}" class="hyperlens-link" title="View Summary & Liquidations">📊</a>
         </div>
       </div>
     `;
@@ -994,6 +994,31 @@ function renderDigestStats() {
   } else {
     closestContainer.innerHTML = '<div class="loading">No positions at risk currently</div>';
   }
+  
+  // Render top positions with HOT alerts
+  const topPositionsContainer = document.getElementById('topPositionsList');
+  
+  if (stats.topPositions && stats.topPositions.length > 0) {
+    const topPositionsHTML = stats.topPositions.map(pos => {
+      const isHot = pos.notional >= 1000000; // $1M threshold
+      const hotClass = isHot ? 'hot-position' : '';
+      const hotIcon = isHot ? '🔥' : '🟢';
+      
+      return `
+        <div class="position-entry ${hotClass}">
+          <span class="position-icon">${hotIcon}</span>
+          <span class="position-details">
+            ${pos.asset} $${formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x
+            ${isHot ? '<span class="hot-badge">HOT!</span>' : ''}
+          </span>
+        </div>
+      `;
+    }).join('');
+    
+    topPositionsContainer.innerHTML = topPositionsHTML;
+  } else {
+    topPositionsContainer.innerHTML = '<div class="loading">No positions found</div>';
+  }
 }
 
 // Navigation function
@@ -1071,7 +1096,20 @@ async function triggerDiscovery() {
     const result = await response.json();
     
     if (result.success) {
-      // Update the discovery stats immediately
+      // Update the stats immediately with the returned data
+      if (result.totalStats) {
+        state.stats = result.totalStats;
+      } else if (result.stats) {
+        state.stats.discoveryStats = result.stats;
+      }
+      
+      // Update whale count directly from API response
+      if (result.whalesTracked) {
+        state.stats.whalesTracked = result.whalesTracked;
+      }
+      
+      // Update all stats display immediately
+      updateStats();
       renderDiscoveryStats();
       
       // Show success message

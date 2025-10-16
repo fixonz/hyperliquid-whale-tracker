@@ -241,8 +241,12 @@ class LiquidationMonitor {
       this.stats.discoveryStats.lastAdded = newAddresses;
       this.stats.discoveryStats.totalAdded += newAddresses;
       
+      // Update whale tracking count immediately
+      this.stats.whalesTracked = this.knownAddresses.size;
+      
       if (newAddresses > 0) {
         console.log(chalk.green.bold(`✅ Added ${newAddresses} new active addresses to tracking`));
+        console.log(chalk.green(`📊 Total whales now tracked: ${this.stats.whalesTracked}`));
       } else {
         console.log(chalk.gray(`  ℹ️ No new addresses to add (${activeAddresses.size} already tracked)`));
       }

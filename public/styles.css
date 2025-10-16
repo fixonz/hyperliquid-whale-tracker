@@ -81,6 +81,25 @@ body {
   opacity: 0.7;
 }
 
+.hyperlens-link {
+  margin-left: 8px;
+  color: #00ff41;
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.hyperlens-link:hover {
+  background: rgba(0, 255, 65, 0.2);
+  border-color: rgba(0, 255, 65, 0.4);
+  transform: scale(1.05);
+}
+
 /* 🔥 FIRE Heatmap Design */
 .heatmap-header {
   background: linear-gradient(135deg, rgba(0, 255, 65, 0.1), rgba(255, 68, 68, 0.1));
@@ -117,15 +136,18 @@ body {
 
 .heatmap-stats {
   display: flex;
-  gap: 20px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .stat-card {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(0, 255, 65, 0.3);
-  border-radius: 8px;
-  padding: 12px 16px;
+  border-radius: 6px;
+  padding: 8px 12px;
   text-align: center;
+  flex: 1;
+  min-width: 0;
   min-width: 80px;
   transition: all 0.3s ease;
 }
@@ -181,13 +203,14 @@ body {
 
 .heatmap-container {
   position: relative;
-  height: 300px;
+  height: 200px;
   background: linear-gradient(90deg, 
     rgba(255, 68, 68, 0.1) 0%, 
     rgba(0, 0, 0, 0.2) 50%, 
     rgba(0, 255, 65, 0.1) 100%);
   border-radius: 8px;
   overflow: hidden;
+  margin-top: 10px;
 }
 
 .heatmap-bars {
@@ -195,7 +218,7 @@ body {
   align-items: flex-end;
   height: 100%;
   gap: 2px;
-  padding: 10px;
+  padding: 8px 12px;
 }
 
 .heatmap-bar {
@@ -753,6 +776,96 @@ body {
   transform: translateY(0);
 }
 
+/* Top Positions Section */
+.top-positions-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.top-positions-section h3 {
+  color: #00ff41;
+  margin-bottom: 15px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-positions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.position-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.position-entry:hover {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(0, 255, 65, 0.4);
+}
+
+.position-entry.hot-position {
+  background: rgba(255, 68, 68, 0.1);
+  border-color: rgba(255, 68, 68, 0.4);
+  animation: hotPulse 2s infinite;
+}
+
+.position-entry.hot-position:hover {
+  background: rgba(255, 68, 68, 0.2);
+  border-color: rgba(255, 68, 68, 0.6);
+}
+
+.position-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.position-details {
+  flex: 1;
+  font-size: 14px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hot-badge {
+  background: linear-gradient(135deg, #ff4444, #ff6666);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: hotBlink 1s infinite;
+}
+
+@keyframes hotPulse {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(255, 68, 68, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 15px rgba(255, 68, 68, 0.6);
+  }
+}
+
+@keyframes hotBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.7; }
+}
+
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #533483 100%);
@@ -1131,13 +1244,15 @@ h2 {
   
   /* Heatmap header mobile */
   .heatmap-stats {
-    flex-direction: column;
-    gap: 10px;
+    flex-direction: row;
+    gap: 6px;
+    margin-bottom: 8px;
   }
   
   .stat-card {
-    padding: 10px 12px;
+    padding: 6px 8px;
     min-width: auto;
+    flex: 1;
   }
   
   .stat-value {

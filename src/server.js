@@ -111,6 +111,49 @@ app.post('/api/addresses', (req, res) => {
 });
 
 /**
+ * Serve summary page
+ */
+app.get('/summary/:address', (req, res) => {
+  const address = req.params.address;
+  if (!address || address.length !== 42 || !address.startsWith('0x')) {
+    return res.status(400).send('Invalid address format');
+  }
+  res.sendFile(path.join(__dirname, '../public/summary.html'));
+});
+
+/**
+ * Get Hyperlens.io address stats
+ */
+app.post('/api/hyperlens-address-stats', async (req, res) => {
+  try {
+    const { HyperlensAPI } = await import('./api/hyperlens.js');
+    const hyperlensAPI = new HyperlensAPI();
+    
+    const stats = await hyperlensAPI.getAddressStats(req.body);
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching address stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get Hyperlens.io liquidations for address
+ */
+app.post('/api/hyperlens-liquidations', async (req, res) => {
+  try {
+    const { HyperlensAPI } = await import('./api/hyperlens.js');
+    const hyperlensAPI = new HyperlensAPI();
+    
+    const liquidations = await hyperlensAPI.getLiquidations(req.body);
+    res.json(liquidations);
+  } catch (error) {
+    console.error('Error fetching liquidations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Trigger manual address discovery
  */
 app.post('/api/discover-addresses', async (req, res) => {
@@ -122,7 +165,9 @@ app.post('/api/discover-addresses', async (req, res) => {
       success: true, 
       discovered: discoveredAddresses.length,
       addresses: discoveredAddresses.slice(0, 10), // Return first 10 for preview
-      stats: monitor.stats.discoveryStats
+      stats: monitor.stats.discoveryStats,
+      whalesTracked: monitor.stats.whalesTracked,
+      totalStats: monitor.stats
     });
   } catch (error) {
     console.error('Error in manual discovery:', error);

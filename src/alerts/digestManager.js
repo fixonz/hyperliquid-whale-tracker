@@ -19,6 +19,8 @@ export class DigestManager {
       liquidatedPositions: [],
       wokenWhales: [],
       clusters: [],
+      processedPositions: new Set(), // Track processed positions to prevent duplicates
+      processedLiquidations: new Set(), // Track processed liquidations
       stats: {
         totalLongsOpened: 0,
         totalShortsOpened: 0,
@@ -59,6 +61,17 @@ export class DigestManager {
    * Add a whale position opening to digest
    */
   addWhaleOpen(position, whale) {
+    // Create unique key for position (address + asset + side + rounded timestamp to minute)
+    const timeKey = Math.floor(Date.now() / 60000); // Round to minute
+    const positionKey = `${position.address}_${position.asset}_${position.side}_${timeKey}`;
+    
+    // Skip if already processed in this minute
+    if (this.digest.processedPositions.has(positionKey)) {
+      return;
+    }
+    
+    this.digest.processedPositions.add(positionKey);
+    
     const posData = {
       address: position.address,
       asset: position.asset,
@@ -117,6 +130,17 @@ export class DigestManager {
    * Add actual liquidation event
    */
   addLiquidation(position) {
+    // Create unique key for liquidation (address + asset + side + rounded timestamp to minute)
+    const timeKey = Math.floor(Date.now() / 60000); // Round to minute
+    const liquidationKey = `LIQ_${position.address}_${position.asset}_${position.side}_${timeKey}`;
+    
+    // Skip if already processed in this minute
+    if (this.digest.processedLiquidations.has(liquidationKey)) {
+      return;
+    }
+    
+    this.digest.processedLiquidations.add(liquidationKey);
+    
     this.digest.liquidatedPositions.push({
       address: position.address,
       asset: position.asset,
@@ -466,6 +490,23 @@ export class DigestManager {
       .sort((a, b) => a.percentFromLiquidation - b.percentFromLiquidation)
       .slice(0, 5);
     
+    // Get top positions (deduplicated by address+asset combination)
+    const allPositions = [...this.digest.newLongs, ...this.digest.newShorts];
+    const positionMap = new Map();
+    
+    // Deduplicate positions by combining address+asset as key
+    allPositions.forEach(pos => {
+      const key = `${pos.address}_${pos.asset}`;
+      if (!positionMap.has(key) || positionMap.get(key).notional < pos.notional) {
+        positionMap.set(key, pos);
+      }
+    });
+    
+    // Sort by notional value and get top 5
+    const topPositions = Array.from(positionMap.values())
+      .sort((a, b) => b.notional - a.notional)
+      .slice(0, 5);
+    
     return {
       volume,
       longsCount,
@@ -474,7 +515,8 @@ export class DigestManager {
       shortsValue: stats.totalShortValue,
       maxLeverage,
       atRiskCount,
-      closestToLiq
+      closestToLiq,
+      topPositions
     };
   }
 }
