@@ -72,21 +72,41 @@ app.get('/api/positions/:side', (req, res) => {
 /**
  * Get top whales
  */
-app.get('/api/whales', (req, res) => {
-  const count = parseInt(req.query.count) || 20;
-  const whales = monitor.whaleTracker.getTopWhales(count);
-  res.json(whales);
+app.get('/api/whales', async (req, res) => {
+  try {
+    const count = parseInt(req.query.count) || 20;
+    // Use HyperlensWhaleTracker for real whale data
+    const whales = await monitor.hyperlensWhaleTracker.getTopWhales(count);
+    res.json(whales);
+  } catch (error) {
+    console.error('Error fetching whales:', error);
+    // Fallback to old whale tracker if Hyperlens fails
+    const whales = monitor.whaleTracker.getTopWhales(parseInt(req.query.count) || 20);
+    res.json(whales);
+  }
 });
 
 /**
  * Get whale data by address
  */
-app.get('/api/whales/:address', (req, res) => {
-  const whale = monitor.whaleTracker.getWhale(req.params.address);
-  if (!whale) {
-    return res.status(404).json({ error: 'Whale not found' });
+app.get('/api/whales/:address', async (req, res) => {
+  try {
+    // Try HyperlensWhaleTracker first
+    const whale = await monitor.hyperlensWhaleTracker.getWhale(req.params.address);
+    if (whale) {
+      return res.json(whale);
+    }
+    
+    // Fallback to old whale tracker
+    const fallbackWhale = monitor.whaleTracker.getWhale(req.params.address);
+    if (!fallbackWhale) {
+      return res.status(404).json({ error: 'Whale not found' });
+    }
+    res.json(fallbackWhale);
+  } catch (error) {
+    console.error('Error fetching whale:', error);
+    res.status(500).json({ error: 'Failed to fetch whale data' });
   }
-  res.json(whale);
 });
 
 /**

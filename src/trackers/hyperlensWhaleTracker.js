@@ -209,19 +209,30 @@ export class HyperlensWhaleTracker {
   /**
    * Get top profitable whales
    */
-  getTopWhales(limit = 20) {
+  async getTopWhales(limit = 20) {
+    // If no whales loaded yet, fetch them first
+    if (this.whales.size === 0) {
+      await this.fetchRealWhales();
+    }
+    
     const whales = Array.from(this.whales.values())
       .filter(whale => whale.roi > 0) // Only profitable whales
       .sort((a, b) => b.roi - a.roi)
       .slice(0, limit);
     
+    console.log(`🐋 HyperlensWhaleTracker: Returning ${whales.length} whales with real data`);
     return whales;
   }
 
   /**
    * Get whale by address
    */
-  getWhale(address) {
+  async getWhale(address) {
+    // If no whales loaded yet, fetch them first
+    if (this.whales.size === 0) {
+      await this.fetchRealWhales();
+    }
+    
     return this.whales.get(address);
   }
 

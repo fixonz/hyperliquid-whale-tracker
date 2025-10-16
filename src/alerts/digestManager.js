@@ -61,11 +61,10 @@ export class DigestManager {
    * Add a whale position opening to digest
    */
   addWhaleOpen(position, whale) {
-    // Create unique key for position (address + asset + side + rounded timestamp to 5 minutes)
-    const timeKey = Math.floor(Date.now() / (5 * 60000)); // Round to 5 minutes
-    const positionKey = `${position.address}_${position.asset}_${position.side}_${timeKey}`;
+    // Create unique key for position (address + asset + side) - no time window for strict deduplication
+    const positionKey = `${position.address}_${position.asset}_${position.side}`;
     
-    // Skip if already processed in this 5-minute window
+    // Skip if already processed in this digest period
     if (this.digest.processedPositions.has(positionKey)) {
       console.log(`🔄 Skipping duplicate position: ${position.address.slice(0, 6)}...${position.asset} ${position.side}`);
       return;
@@ -376,7 +375,9 @@ export class DigestManager {
       message += `\n<b>🔥 TOP POSITIONS:</b>\n`;
       allPositions.forEach(pos => {
         const emoji = pos.side === 'LONG' ? '🟢' : '🔴';
-        message += `${emoji} ${pos.asset} $${this.formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x\n`;
+        const wallet = pos.address ? `${pos.address.slice(0, 6)}...${pos.address.slice(-4)}` : 'Unknown';
+        message += `${emoji} ${pos.asset} ${pos.side} $${this.formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x\n`;
+        message += `   <a href="https://hyperliquid-alerts.onrender.com/summary/${pos.address}">${wallet}</a>\n`;
       });
     }
 

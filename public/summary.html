@@ -140,7 +140,7 @@
             }
         }
         
-        function renderSummaryData(address, portfolio, positions, fills, liquidations, performance) {
+        function renderSummaryData(address, portfolio, positions, fills, liquidations, performance, highlight = null) {
             const grid = document.getElementById('stats-grid');
             
             // Calculate stats from available data
@@ -232,6 +232,37 @@
             if (fills && fills.length > 0) {
                 renderRecentFills(fills);
             }
+            
+            // Show highlighted position if specified
+            if (highlight) {
+                renderHighlightedPosition(highlight);
+            }
+        }
+        
+        function renderHighlightedPosition(highlight) {
+            const [asset, side] = highlight.split('_');
+            if (!asset || !side) return;
+            
+            // Add a highlighted position section
+            const summarySection = document.getElementById('summary');
+            const highlightSection = document.createElement('section');
+            highlightSection.className = 'panel';
+            highlightSection.style.border = '2px solid #ff4444';
+            highlightSection.style.background = 'rgba(255, 68, 68, 0.1)';
+            highlightSection.innerHTML = `
+                <h2>🔥 Highlighted Position</h2>
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 24px; color: #ff4444; margin-bottom: 10px;">
+                        ${asset} ${side}
+                    </div>
+                    <div style="color: #ccc;">
+                        This position was highlighted from the TOP POSITIONS list
+                    </div>
+                </div>
+            `;
+            
+            // Insert at the top
+            summarySection.insertBefore(highlightSection, summarySection.firstChild);
         }
         
         function renderLiquidations(liquidations) {

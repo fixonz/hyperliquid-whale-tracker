@@ -56,10 +56,27 @@ class LiquidationMonitor {
   }
 
   /**
+   * Initialize HyperlensWhaleTracker with real whale data
+   */
+  async initializeHyperlensWhales() {
+    try {
+      console.log(chalk.cyan('🐋 Initializing HyperlensWhaleTracker...'));
+      await this.hyperlensWhaleTracker.fetchRealWhales();
+      console.log(chalk.green(`✓ Loaded ${this.hyperlensWhaleTracker.whales.size} real whales from Hyperlens.io`));
+    } catch (error) {
+      console.error(chalk.red('❌ Failed to initialize HyperlensWhaleTracker:'), error.message);
+      console.log(chalk.yellow('⚠️ Falling back to basic whale tracking'));
+    }
+  }
+
+  /**
    * Initialize the monitor
    */
   async initialize() {
     console.log(chalk.cyan.bold('\n🚀 Hyperliquid Liquidation Monitor Starting...\n'));
+
+    // Initialize HyperlensWhaleTracker with real data first
+    await this.initializeHyperlensWhales();
 
     // Load initial whale addresses from tracker
     const existingWhales = this.whaleTracker.getWhaleAddresses();
@@ -748,12 +765,6 @@ class LiquidationMonitor {
       // Add high-risk positions to digest
       if (pos.isAtRisk && pos.notionalValue >= this.whaleThreshold) {
         this.digestManager.addLiquidationRisk(pos);
-      }
-      
-      // Add all significant positions to digest for 7-minute summary
-      if (pos.notionalValue >= this.whaleThreshold) {
-        const whale = this.whaleTracker.getWhale(pos.address);
-        this.digestManager.addWhaleOpen(pos, whale);
       }
     }
   }
