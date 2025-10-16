@@ -7,6 +7,7 @@ export class EnhancedAlertManager extends AlertManager {
     super(config);
     this.hyperlensAPI = new HyperlensAPI();
     this.enhancedWhaleTracker = new EnhancedWhaleTracker();
+    this.attributionCounter = 0;
     this.liquidationThresholds = {
       small: 10000,    // $10k
       medium: 100000,  // $100k
@@ -170,6 +171,29 @@ export class EnhancedAlertManager extends AlertManager {
     };
 
     await this.sendAlert(alert, data.severity === 'critical');
+  }
+
+  /**
+   * New alert type: HOT position over $1M
+   */
+  async sendHotPositionAlert(position, whale = null) {
+    const alert = {
+      type: 'HOT_POSITION',
+      timestamp: Date.now(),
+      severity: 'hot',
+      address: position.address,
+      asset: position.asset,
+      side: position.side,
+      notional: position.notional || position.positionValue,
+      leverage: position.leverage,
+      entryPrice: position.entryPrice,
+      liquidationPrice: position.liquidationPx,
+      whaleRoi: whale?.roi || 0,
+      message: this.formatHotPositionMessage(position, whale)
+    };
+
+    // Always pin HOT positions over $1M
+    await this.sendAlert(alert, true);
   }
 
   // Helper methods for enhanced alerts
@@ -340,6 +364,28 @@ export class EnhancedAlertManager extends AlertManager {
     return msg;
   }
 
+  /**
+   * Format HOT position alert message
+   */
+  formatHotPositionMessage(position, whale) {
+    const side = position.side === 'LONG' ? '🟢 LONG' : '🔴 SHORT';
+    const leverage = position.leverage ? `${position.leverage.toFixed(1)}x` : 'Unknown';
+    const notional = position.notional || position.positionValue;
+    const whaleInfo = whale ? `\n🐋 Whale ROI: ${(whale.roi || 0).toFixed(1)}%` : '';
+    
+    return `🔥 <b>HOT POSITION ALERT</b> 🔥
+
+${side} ${position.asset}
+💰 Value: $${this.formatLargeNumber(notional)}
+⚡ Leverage: ${leverage}
+📍 Entry: $${(position.entryPrice || 0).toFixed(2)}
+🎯 Liq Price: $${(position.liquidationPx || 0).toFixed(2)}${whaleInfo}
+
+⚠️ <b>Position over $1M - Monitor closely!</b>
+
+💡 <i>Data powered by Hyperliquid API & Hyperlens.io</i>`;
+  }
+
   // Override the base formatTelegramMessage to handle new alert types
   formatTelegramMessage(alert) {
     // Handle new alert types with enhanced formatting
@@ -367,9 +413,11 @@ export class EnhancedAlertManager extends AlertManager {
       msg += `\n\n🔗 <a href="https://app.hyperliquid.xyz/explorer/account?address=${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
     }
     
-    // Add Hyperlens.io branding for enhanced alerts
-    if (alert.type.includes('ENHANCED') || alert.type === 'HYPERLENS_INSIGHT') {
-      msg += `\n\n💡 <i>Enhanced with Hyperlens.io data</i>`;
+    // Add API attribution every 5th alert to avoid spam
+    this.attributionCounter++;
+    if (this.attributionCounter % 5 === 0 && 
+        (alert.type.includes('ENHANCED') || alert.type === 'HYPERLENS_INSIGHT' || alert.type === 'HOT_POSITION')) {
+      msg += `\n\n💡 <i>Data powered by Hyperliquid API & Hyperlens.io</i>`;
     }
     
     return msg;

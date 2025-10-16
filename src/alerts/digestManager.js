@@ -61,16 +61,18 @@ export class DigestManager {
    * Add a whale position opening to digest
    */
   addWhaleOpen(position, whale) {
-    // Create unique key for position (address + asset + side + rounded timestamp to minute)
-    const timeKey = Math.floor(Date.now() / 60000); // Round to minute
+    // Create unique key for position (address + asset + side + rounded timestamp to 5 minutes)
+    const timeKey = Math.floor(Date.now() / (5 * 60000)); // Round to 5 minutes
     const positionKey = `${position.address}_${position.asset}_${position.side}_${timeKey}`;
     
-    // Skip if already processed in this minute
+    // Skip if already processed in this 5-minute window
     if (this.digest.processedPositions.has(positionKey)) {
+      console.log(`🔄 Skipping duplicate position: ${position.address.slice(0, 6)}...${position.asset} ${position.side}`);
       return;
     }
     
     this.digest.processedPositions.add(positionKey);
+    console.log(`✅ Added new position: ${position.address.slice(0, 6)}...${position.asset} ${position.side} $${Math.round(position.positionValue)}`);
     
     const posData = {
       address: position.address,
@@ -494,9 +496,9 @@ export class DigestManager {
     const allPositions = [...this.digest.newLongs, ...this.digest.newShorts];
     const positionMap = new Map();
     
-    // Deduplicate positions by combining address+asset as key
+    // Deduplicate positions by combining address+asset+side as key
     allPositions.forEach(pos => {
-      const key = `${pos.address}_${pos.asset}`;
+      const key = `${pos.address}_${pos.asset}_${pos.side}`;
       if (!positionMap.has(key) || positionMap.get(key).notional < pos.notional) {
         positionMap.set(key, pos);
       }
@@ -506,6 +508,14 @@ export class DigestManager {
     const topPositions = Array.from(positionMap.values())
       .sort((a, b) => b.notional - a.notional)
       .slice(0, 5);
+    
+    // Debug logging for troubleshooting
+    console.log(`📊 Digest Stats: ${longsCount} longs, ${shortsCount} shorts, ${topPositions.length} top positions`);
+    if (topPositions.length > 0) {
+      console.log('🔥 Top positions:', topPositions.map(p => 
+        `${p.asset} ${p.side} $${Math.round(p.notional)} (${p.address.slice(0, 6)}...)`
+      ));
+    }
     
     return {
       volume,

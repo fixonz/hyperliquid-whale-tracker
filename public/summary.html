@@ -5,131 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Address Summary - Hyperliquid Alert</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        .summary-container {
-            max-width: 100%;
-            margin: 0 auto;
-            padding: 20px;
-            overflow-x: hidden;
-        }
-        
-        .summary-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .address-display {
-            font-family: 'Courier New', monospace;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid rgba(0, 255, 65, 0.3);
-            margin: 20px 0;
-            word-break: break-all;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-card {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(0, 255, 65, 0.3);
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #00ff41;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            font-size: 14px;
-            color: #ccc;
-        }
-        
-        .liquidations-section {
-            margin-top: 30px;
-        }
-        
-        .liquidation-item {
-            background: rgba(255, 68, 68, 0.1);
-            border: 1px solid rgba(255, 68, 68, 0.3);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-        }
-        
-        .back-button {
-            display: inline-block;
-            padding: 10px 20px;
-            background: rgba(0, 255, 65, 0.1);
-            border: 1px solid rgba(0, 255, 65, 0.3);
-            color: #00ff41;
-            text-decoration: none;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            transition: all 0.2s ease;
-        }
-        
-        .back-button:hover {
-            background: rgba(0, 255, 65, 0.2);
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #00ff41;
-        }
-        
-        .error {
-            text-align: center;
-            padding: 40px;
-            color: #ff4444;
-        }
-    </style>
 </head>
 <body>
-    <div class="summary-container">
-        <a href="/" class="back-button">← Back to Dashboard</a>
-        
-        <div class="summary-header">
-            <h1>🚨 Address Summary</h1>
-        </div>
-        
-        <div id="loading" class="loading">
-            <div>📊 Loading address data...</div>
-        </div>
-        
-        <div id="error" class="error" style="display: none;">
-            <div>❌ Error loading data</div>
-        </div>
-        
-        <div id="summary-content" style="display: none;">
-            <div class="address-display">
-                <strong>Address:</strong> <span id="address-text"></span>
-                <button onclick="copyAddress(document.getElementById('address-text').textContent)" style="margin-left: 10px; padding: 5px 10px; background: rgba(0, 255, 65, 0.1); border: 1px solid rgba(0, 255, 65, 0.3); color: #00ff41; border-radius: 4px; cursor: pointer;">Copy</button>
+    <div class="container">
+        <header class="header">
+            <h1>🚨 Hyperliquid Alert</h1>
+            <div class="status" id="status">Loading...</div>
+        </header>
+
+        <nav class="nav-bar">
+            <button class="nav-btn active" onclick="scrollToSection('summary')">📊 Summary</button>
+            <button class="nav-btn" onclick="scrollToSection('liquidations')">💥 Liquidations</button>
+            <a href="/" class="nav-btn">← Back to Dashboard</a>
+        </nav>
+
+        <div class="main-grid">
+            <div id="loading" class="panel" style="text-align: center; padding: 40px;">
+                <div style="color: #00ff41; font-size: 18px;">📊 Loading address data...</div>
             </div>
             
-            <div class="stats-grid" id="stats-grid">
-                <!-- Stats will be populated here -->
+            <div id="error" class="panel" style="text-align: center; padding: 40px; display: none;">
+                <div style="color: #ff4444; font-size: 18px;">❌ Error loading data</div>
             </div>
             
-            <div class="liquidations-section">
-                <h2>💥 Recent Liquidations</h2>
-                <div id="liquidations-list">
-                    <!-- Liquidations will be populated here -->
-                </div>
+            <div id="summary-content" style="display: none;">
+                <section id="summary" class="panel">
+                    <h2>📊 Address Summary</h2>
+                    <div class="address-display">
+                        <strong>Address:</strong> <span id="address-text"></span>
+                        <button onclick="copyAddress(document.getElementById('address-text').textContent)" class="copy-btn">Copy</button>
+                    </div>
+                    
+                    <div class="stats-grid" id="stats-grid">
+                        <!-- Stats will be populated here -->
+                    </div>
+                </section>
+                
+                <section id="liquidations" class="panel">
+                    <h2>💥 Recent Liquidations</h2>
+                    <div id="liquidations-list">
+                        <!-- Liquidations will be populated here -->
+                    </div>
+                </section>
             </div>
         </div>
     </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="api-attribution">
+                <span>Powered by:</span>
+                <a href="https://hyperliquid.xyz" target="_blank" class="api-link">Hyperliquid</a>
+                <span>&</span>
+                <a href="https://hyperlens.io" target="_blank" class="api-link">Hyperlens.io</a>
+            </div>
+            <div class="footer-text">
+                Data provided by Hyperliquid API and enhanced with Hyperlens.io analytics
+            </div>
+        </div>
+    </footer>
 
     <script>
         // Get address from URL
@@ -148,39 +82,48 @@
             try {
                 document.getElementById('address-text').textContent = address;
                 
-                // Load address stats from Hyperlens.io
-                const statsResponse = await fetch('/api/hyperlens-address-stats', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        address: address,
-                        days: 7
-                    })
-                });
+                // Load multiple data sources from Hyperlens.io
+                const [portfolioData, positionsData, fillsData, liquidationsData, performanceData] = await Promise.allSettled([
+                    fetch('/api/hyperlens-portfolio', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ address: address })
+                    }).then(r => r.ok ? r.json() : null),
+                    
+                    fetch('/api/hyperlens-positions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ address: address })
+                    }).then(r => r.ok ? r.json() : null),
+                    
+                    fetch('/api/hyperlens-fills', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ address: address, limit: 20 })
+                    }).then(r => r.ok ? r.json() : null),
+                    
+                    fetch('/api/hyperlens-liquidations', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ address: address, limit: 10 })
+                    }).then(r => r.ok ? r.json() : null),
+                    
+                    fetch('/api/hyperlens-performance', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ address: address })
+                    }).then(r => r.ok ? r.json() : null)
+                ]);
                 
-                if (statsResponse.ok) {
-                    const stats = await statsResponse.json();
-                    renderStats(stats);
-                }
+                // Extract successful responses
+                const portfolio = portfolioData.status === 'fulfilled' ? portfolioData.value : null;
+                const positions = positionsData.status === 'fulfilled' ? positionsData.value : null;
+                const fills = fillsData.status === 'fulfilled' ? fillsData.value : null;
+                const liquidations = liquidationsData.status === 'fulfilled' ? liquidationsData.value : null;
+                const performance = performanceData.status === 'fulfilled' ? performanceData.value : null;
                 
-                // Load liquidations for this address
-                const liquidationsResponse = await fetch('/api/hyperlens-liquidations', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        address: address,
-                        limit: 10
-                    })
-                });
-                
-                if (liquidationsResponse.ok) {
-                    const liquidations = await liquidationsResponse.json();
-                    renderLiquidations(liquidations);
-                }
+                // Render the data
+                renderSummaryData(address, portfolio, positions, fills, liquidations, performance);
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('summary-content').style.display = 'block';
@@ -193,40 +136,97 @@
             }
         }
         
-        function renderStats(stats) {
+        function renderSummaryData(address, portfolio, positions, fills, liquidations, performance) {
             const grid = document.getElementById('stats-grid');
             
-            if (stats && stats.length > 0) {
-                const latestStats = stats[0]; // Most recent day
+            // Calculate stats from available data
+            let accountValue = 'N/A';
+            let totalPnL = 'N/A';
+            let activePositions = 0;
+            let totalVolume = 0;
+            let winRate = 'N/A';
+            let totalTrades = 0;
+            
+            // Portfolio data
+            if (portfolio) {
+                if (portfolio.accountValueHistory && portfolio.accountValueHistory.length > 0) {
+                    const latestValue = portfolio.accountValueHistory[portfolio.accountValueHistory.length - 1];
+                    accountValue = `$${formatNumber(parseFloat(latestValue[1]))}`;
+                }
+                if (portfolio.pnlHistory && portfolio.pnlHistory.length > 0) {
+                    const latestPnL = portfolio.pnlHistory[portfolio.pnlHistory.length - 1];
+                    totalPnL = parseFloat(latestPnL[1]);
+                }
+            }
+            
+            // Positions data
+            if (positions) {
+                activePositions = positions.assetPositions ? positions.assetPositions.length : 0;
+                if (positions.marginSummary) {
+                    const marginValue = parseFloat(positions.marginSummary.accountValue || 0);
+                    if (marginValue > 0) {
+                        accountValue = `$${formatNumber(marginValue)}`;
+                    }
+                }
+            }
+            
+            // Performance data
+            if (performance && performance.length > 0) {
+                totalTrades = performance.reduce((sum, coin) => sum + (coin.total_trades || 0), 0);
+                totalVolume = performance.reduce((sum, coin) => sum + (coin.total_notional_traded || 0), 0);
                 
-                grid.innerHTML = `
-                    <div class="stat-card">
-                        <div class="stat-value">${latestStats.trades || 0}</div>
-                        <div class="stat-label">Total Trades</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">$${formatNumber(latestStats.total_volume || 0)}</div>
-                        <div class="stat-label">Total Volume</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${latestStats.total_pnl >= 0 ? '+' : ''}$${formatNumber(Math.abs(latestStats.total_pnl || 0))}</div>
-                        <div class="stat-label">Total PnL</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${latestStats.liquidated_trades || 0}</div>
-                        <div class="stat-label">Liquidated Trades</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${latestStats.winning_trades || 0}</div>
-                        <div class="stat-label">Winning Trades</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${latestStats.losing_trades || 0}</div>
-                        <div class="stat-label">Losing Trades</div>
-                    </div>
-                `;
-            } else {
-                grid.innerHTML = '<div class="error">No stats available</div>';
+                // Calculate overall win rate
+                const totalWins = performance.reduce((sum, coin) => sum + ((coin.win_rate || 0) * (coin.total_trades || 0)), 0);
+                if (totalTrades > 0) {
+                    winRate = `${((totalWins / totalTrades) * 100).toFixed(1)}%`;
+                }
+            }
+            
+            // Fills data for recent activity
+            const recentFills = fills ? fills.length : 0;
+            const liquidatedCount = liquidations ? liquidations.length : 0;
+            
+            grid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${accountValue}</div>
+                    <div class="stat-label">Account Value</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${totalPnL !== 'N/A' ? (totalPnL >= 0 ? '+' : '') + `$${formatNumber(Math.abs(totalPnL))}` : 'N/A'}</div>
+                    <div class="stat-label">Total PnL</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${activePositions}</div>
+                    <div class="stat-label">Active Positions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${totalTrades.toLocaleString()}</div>
+                    <div class="stat-label">Total Trades</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">$${formatNumber(totalVolume)}</div>
+                    <div class="stat-label">Total Volume</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${winRate}</div>
+                    <div class="stat-label">Win Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${recentFills}</div>
+                    <div class="stat-label">Recent Fills</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${liquidatedCount}</div>
+                    <div class="stat-label">Liquidations</div>
+                </div>
+            `;
+            
+            // Render liquidations
+            renderLiquidations(liquidations);
+            
+            // Render recent fills if available
+            if (fills && fills.length > 0) {
+                renderRecentFills(fills);
             }
         }
         
@@ -253,6 +253,44 @@
             } else {
                 list.innerHTML = '<div style="text-align: center; color: #ccc; padding: 20px;">No liquidations found</div>';
             }
+        }
+        
+        function renderRecentFills(fills) {
+            // Add a new section for recent fills
+            const liquidationsSection = document.getElementById('liquidations');
+            
+            // Create recent fills section
+            const fillsSection = document.createElement('section');
+            fillsSection.className = 'panel';
+            fillsSection.innerHTML = `
+                <h2>💹 Recent Trading Activity</h2>
+                <div id="recent-fills-list">
+                    ${fills.slice(0, 10).map(fill => `
+                        <div class="fill-item">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>${fill.coin || 'UNKNOWN'}</strong>
+                                    <span style="margin-left: 10px; color: ${fill.side === 'B' ? '#00ff41' : '#ff4444'};">
+                                        ${fill.side === 'B' ? 'BUY' : 'SELL'}
+                                    </span>
+                                    <span style="margin-left: 10px; font-size: 12px; color: #ccc;">
+                                        ${Math.abs(fill.sz || 0)} @ $${(fill.px || 0).toFixed(2)}
+                                    </span>
+                                </div>
+                                <div style="color: ${fill.closedPnl >= 0 ? '#00ff41' : '#ff4444'}; font-weight: bold;">
+                                    ${fill.closedPnl >= 0 ? '+' : ''}$${formatNumber(Math.abs(fill.closedPnl || 0))}
+                                </div>
+                            </div>
+                            <div style="font-size: 12px; color: #ccc; margin-top: 5px;">
+                                ${new Date(fill.time).toLocaleString()}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            // Insert after liquidations section
+            liquidationsSection.parentNode.insertBefore(fillsSection, liquidationsSection.nextSibling);
         }
         
         function formatNumber(num) {

@@ -154,6 +154,84 @@ app.post('/api/hyperlens-liquidations', async (req, res) => {
 });
 
 /**
+ * Get Hyperlens.io portfolio data for address
+ */
+app.post('/api/hyperlens-portfolio', async (req, res) => {
+  try {
+    const { HyperlensAPI } = await import('./api/hyperlens.js');
+    const hyperlensAPI = new HyperlensAPI();
+    
+    const portfolio = await hyperlensAPI.getPortfolioData(req.body.address);
+    res.json(portfolio);
+  } catch (error) {
+    console.error('Error fetching portfolio:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get Hyperlens.io positions data for address
+ */
+app.post('/api/hyperlens-positions', async (req, res) => {
+  try {
+    const { HyperlensAPI } = await import('./api/hyperlens.js');
+    const hyperlensAPI = new HyperlensAPI();
+    
+    const positions = await hyperlensAPI.getPositionsData(req.body.address);
+    res.json(positions);
+  } catch (error) {
+    console.error('Error fetching positions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get Hyperlens.io fills for address
+ */
+app.post('/api/hyperlens-fills', async (req, res) => {
+  try {
+    const { HyperlensAPI } = await import('./api/hyperlens.js');
+    const hyperlensAPI = new HyperlensAPI();
+    
+    const fills = await hyperlensAPI.getFills(req.body);
+    res.json(fills);
+  } catch (error) {
+    console.error('Error fetching fills:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Get Hyperlens.io performance data for address
+ */
+app.post('/api/hyperlens-performance', async (req, res) => {
+  try {
+    const { HyperlensAPI } = await import('./api/hyperlens.js');
+    const hyperlensAPI = new HyperlensAPI();
+    
+    // Get performance for major coins
+    const coins = ['ETH', 'BTC', 'SOL'];
+    const performance = [];
+    
+    for (const coin of coins) {
+      try {
+        const coinPerf = await hyperlensAPI.getAddressPerformanceByCoin(req.body.address, coin);
+        if (coinPerf && coinPerf.length > 0) {
+          performance.push(coinPerf[0]);
+        }
+      } catch (error) {
+        console.log(`Error fetching ${coin} performance:`, error.message);
+      }
+    }
+    
+    res.json(performance);
+  } catch (error) {
+    console.error('Error fetching performance:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Trigger manual address discovery
  */
 app.post('/api/discover-addresses', async (req, res) => {

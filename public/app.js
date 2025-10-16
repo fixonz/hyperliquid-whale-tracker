@@ -1011,6 +1011,9 @@ function renderDigestStats() {
             ${pos.asset} $${formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x
             ${isHot ? '<span class="hot-badge">HOT!</span>' : ''}
           </span>
+          <span class="position-address" onclick="copyAddress('${pos.address}')" title="Click to copy">
+            ${pos.address.slice(0, 6)}...${pos.address.slice(-4)}
+          </span>
         </div>
       `;
     }).join('');
