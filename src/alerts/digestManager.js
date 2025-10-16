@@ -8,6 +8,23 @@ export class DigestManager {
     this.isRunning = false;
   }
 
+  /**
+   * Format HTML link for Telegram (properly escape special characters)
+   */
+  formatTelegramLink(address, displayText) {
+    // Escape HTML special characters in the display text
+    const escapedText = displayText
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+    
+    const url = `https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
+    
+    return `<a href="${url}">${escapedText}</a>`;
+  }
+
   createEmptyDigest() {
     return {
       startTime: Date.now(),
@@ -377,7 +394,7 @@ export class DigestManager {
         const emoji = pos.side === 'LONG' ? '🟢' : '🔴';
         const wallet = pos.address ? `${pos.address.slice(0, 6)}...${pos.address.slice(-4)}` : 'Unknown';
         message += `${emoji} ${pos.asset} ${pos.side} $${this.formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x\n`;
-        message += `   <a href="https://hyperliquid-whale-tracker.onrender.com/summary/${pos.address}">${wallet}</a>\n`;
+        message += `   ` + this.formatTelegramLink(pos.address, wallet) + `\n`;
       });
     }
 
