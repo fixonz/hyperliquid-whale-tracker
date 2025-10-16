@@ -17,11 +17,40 @@ export class AlertManager {
   }
 
   /**
-   * Send big position alert (100M+)
+   * Send big position alert (10M+)
    */
   async sendBigPositionAlert(position, whale) {
     const notional = Math.abs(position.size * position.entryPrice);
     const wallet = position.address ? `${position.address.slice(0, 6)}...${position.address.slice(-4)}` : 'Unknown';
+    
+    // Fetch wallet performance data from Hyperlens
+    let walletStats = '';
+    try {
+      const { HyperlensAPI } = await import('../api/hyperlens.js');
+      const hyperlens = new HyperlensAPI();
+      
+      // Get address stats summary
+      const stats = await hyperlens.getAddressStatsSummary({
+        address: position.address,
+        days: 7 // Last 7 days
+      });
+      
+      if (stats && stats.length > 0) {
+        const latestStats = stats[0]; // Most recent day
+        const totalTrades = latestStats.trades || 0;
+        const winningTrades = latestStats.winning_trades || 0;
+        const losingTrades = latestStats.losing_trades || 0;
+        const totalPnL = parseFloat(latestStats.total_pnl || 0);
+        const winRate = totalTrades > 0 ? ((winningTrades / totalTrades) * 100).toFixed(1) : '0.0';
+        
+        walletStats = `\n📊 Wallet Performance (7d):\n`;
+        walletStats += `• PnL: ${totalPnL >= 0 ? '+' : ''}$${this.formatLargeNumber(Math.abs(totalPnL))}\n`;
+        walletStats += `• Win Rate: ${winRate}% (${winningTrades}W/${losingTrades}L)\n`;
+        walletStats += `• Trades: ${totalTrades.toLocaleString()}`;
+      }
+    } catch (error) {
+      console.log('Could not fetch wallet stats:', error.message);
+    }
     
     const alert = {
       type: 'BIG_POSITION',
@@ -33,13 +62,14 @@ export class AlertManager {
       entryPrice: position.entryPrice,
       leverage: position.leverage,
       whaleRoi: whale?.roi || 0,
-      message: `🚨 BIG POSITION OPENED\n\n` +
+      message: `🚨 MAJOR POSITION OPENED\n\n` +
                `💰 ${position.asset} ${position.side}\n` +
                `💵 Size: $${this.formatLargeNumber(notional)}\n` +
                `📊 Entry: $${Number(position.entryPrice || 0).toLocaleString()}\n` +
                `⚡ Leverage: ${Number(position.leverage || 0).toFixed(1)}x\n` +
                `👤 Wallet: <a href="https://hyperliquid-alerts.onrender.com/summary/${position.address}">${wallet}</a>\n` +
-               `${whale?.roi ? `📈 ROI: ${Number(whale.roi).toFixed(1)}%` : ''}`
+               `${whale?.roi ? `📈 ROI: ${Number(whale.roi).toFixed(1)}%` : ''}` +
+               walletStats
     };
 
     await this.sendAlert(alert, true); // true = pin this message
@@ -49,20 +79,54 @@ export class AlertManager {
    * Send HOT position alert for positions $1M-$100M
    */
   async sendHotPositionAlert(position, whale) {
+    const notional = Math.abs(position.size * position.entryPrice);
+    const wallet = position.address ? `${position.address.slice(0, 6)}...${position.address.slice(-4)}` : 'Unknown';
+    
+    // Fetch wallet performance data from Hyperlens
+    let walletStats = '';
+    try {
+      const { HyperlensAPI } = await import('../api/hyperlens.js');
+      const hyperlens = new HyperlensAPI();
+      
+      // Get address stats summary
+      const stats = await hyperlens.getAddressStatsSummary({
+        address: position.address,
+        days: 7 // Last 7 days
+      });
+      
+      if (stats && stats.length > 0) {
+        const latestStats = stats[0]; // Most recent day
+        const totalTrades = latestStats.trades || 0;
+        const winningTrades = latestStats.winning_trades || 0;
+        const losingTrades = latestStats.losing_trades || 0;
+        const totalPnL = parseFloat(latestStats.total_pnl || 0);
+        const winRate = totalTrades > 0 ? ((winningTrades / totalTrades) * 100).toFixed(1) : '0.0';
+        
+        walletStats = `\n📊 Wallet (7d): ${totalPnL >= 0 ? '+' : ''}$${this.formatLargeNumber(Math.abs(totalPnL))} | ${winRate}% WR`;
+      }
+    } catch (error) {
+      console.log('Could not fetch wallet stats for HOT alert:', error.message);
+    }
+    
     const alert = {
       type: 'HOT_POSITION',
       timestamp: Date.now(),
       asset: position.asset,
       side: position.side,
       address: position.address,
-      notional: Math.abs(position.size * position.entryPrice),
+      notional: notional,
       entryPrice: position.entryPrice,
       leverage: position.leverage,
       whaleRoi: whale?.roi || 0,
-      message: `🔥 HOT POSITION: #${position.asset} ${position.side} $${this.formatLargeNumber(Math.abs(position.size * position.entryPrice))}`
+      message: `🔥 HOT POSITION\n\n` +
+               `💰 ${position.asset} ${position.side}\n` +
+               `💵 Size: $${this.formatLargeNumber(notional)}\n` +
+               `⚡ Leverage: ${Number(position.leverage || 0).toFixed(1)}x\n` +
+               `👤 <a href="https://hyperliquid-alerts.onrender.com/summary/${position.address}">${wallet}</a>` +
+               walletStats
     };
 
-    await this.sendAlert(alert, true); // true = pin this message
+    await this.sendAlert(alert, false); // false = don't pin HOT position alerts
   }
 
   /**
@@ -381,7 +445,7 @@ export class AlertManager {
         const asset = (alert.asset || 'UNKNOWN').replace(/[<>&]/g, '');
         const address = (alert.address || '').replace(/[<>&]/g, '');
         
-        let msg = `🚨 MASSIVE POSITION OPENED\n`;
+        let msg = `🚨 MAJOR POSITION OPENED\n`;
         msg += `${sideEmoji} #${asset} - ${sideText}\n`;
         msg += `Size: $${notionalFormatted} at $${Number(alert.entryPrice || 0).toLocaleString()}\n`;
         msg += `Leverage: ${Number(alert.leverage || 0).toFixed(1)}x\n`;
@@ -452,7 +516,7 @@ export class AlertManager {
       'WHALE_CLOSE': '🐋 Whale Position Closed',
       'LIQUIDATION_RISK': '⚠️ Liquidation Risk Alert',
       'LIQUIDATION': '🔥 LIQUIDATION ALERT',
-      'BIG_POSITION': '🚨 MASSIVE POSITION OPENED',
+      'BIG_POSITION': '🚨 MAJOR POSITION OPENED',
       'NEW_WHALE_DISCOVERED': '🐋 New Whale Discovered',
       'NEW_WALLET_DISCOVERED': '💼 New Wallet Discovered',
       'LARGE_POSITION': '💰 Large Position Detected',

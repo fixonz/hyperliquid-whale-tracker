@@ -4,7 +4,213 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Address Summary - Hyperliquid Alert</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        html, body {
+          overflow-x: hidden;
+          width: 100%;
+          max-width: 100%;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+          color: #ffffff;
+          min-height: 100vh;
+        }
+
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+          padding: 20px 0;
+          border-bottom: 2px solid #00ff41;
+        }
+
+        .header h1 {
+          font-size: 2.5rem;
+          color: #00ff41;
+          text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+          margin-bottom: 10px;
+        }
+
+        .nav-bar {
+          display: flex;
+          gap: 15px;
+          margin-bottom: 30px;
+          padding: 15px;
+          background: rgba(0, 0, 0, 0.4);
+          border-radius: 10px;
+          border: 1px solid rgba(0, 255, 65, 0.3);
+        }
+
+        .nav-btn {
+          padding: 12px 24px;
+          background: rgba(0, 255, 65, 0.1);
+          border: 1px solid rgba(0, 255, 65, 0.3);
+          border-radius: 8px;
+          color: #00ff41;
+          text-decoration: none;
+          font-weight: bold;
+          transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover, .nav-btn.active {
+          background: rgba(0, 255, 65, 0.2);
+          border-color: #00ff41;
+          transform: translateY(-2px);
+        }
+
+        .panel {
+          background: rgba(0, 0, 0, 0.4);
+          border: 1px solid rgba(0, 255, 65, 0.3);
+          border-radius: 12px;
+          padding: 25px;
+          margin-bottom: 25px;
+        }
+
+        .panel h2 {
+          color: #00ff41;
+          font-size: 1.8rem;
+          margin-bottom: 20px;
+          text-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .address-display {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: rgba(0, 255, 65, 0.1);
+          padding: 15px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+          border: 1px solid rgba(0, 255, 65, 0.3);
+        }
+
+        .copy-btn {
+          background: rgba(0, 255, 65, 0.2);
+          border: 1px solid #00ff41;
+          color: #00ff41;
+          padding: 8px 16px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 12px;
+          transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+          background: rgba(0, 255, 65, 0.3);
+          transform: translateY(-1px);
+        }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 15px;
+          margin: 20px 0;
+        }
+
+        .stat-card {
+          background: rgba(0, 0, 0, 0.4);
+          border: 1px solid rgba(0, 255, 65, 0.3);
+          border-radius: 8px;
+          padding: 15px;
+          text-align: center;
+          transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+          background: rgba(0, 0, 0, 0.6);
+          border-color: rgba(0, 255, 65, 0.5);
+          transform: translateY(-2px);
+        }
+
+        .stat-value {
+          font-size: 24px;
+          font-weight: bold;
+          color: #00ff41;
+          margin-bottom: 5px;
+          text-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .stat-label {
+          font-size: 14px;
+          color: #ccc;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .liquidation-item, .fill-item {
+          background: rgba(255, 68, 68, 0.1);
+          border: 1px solid rgba(255, 68, 68, 0.3);
+          border-radius: 8px;
+          padding: 15px;
+          margin-bottom: 10px;
+          transition: all 0.3s ease;
+        }
+
+        .liquidation-item:hover, .fill-item:hover {
+          background: rgba(255, 68, 68, 0.2);
+          border-color: rgba(255, 68, 68, 0.5);
+          transform: translateX(5px);
+        }
+
+        .footer {
+          margin-top: 50px;
+          padding: 20px;
+          text-align: center;
+          border-top: 1px solid rgba(0, 255, 65, 0.3);
+        }
+
+        .footer-content {
+          color: #888;
+          font-size: 14px;
+        }
+
+        .api-link {
+          color: #00ff41;
+          text-decoration: none;
+          margin: 0 10px;
+        }
+
+        .api-link:hover {
+          text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+          .container {
+            padding: 10px;
+          }
+          
+          .header h1 {
+            font-size: 2rem;
+          }
+          
+          .stats-grid {
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+          }
+          
+          .stat-card {
+            padding: 10px;
+          }
+          
+          .stat-value {
+            font-size: 18px;
+          }
+          
+          .stat-label {
+            font-size: 12px;
+          }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -151,7 +357,7 @@
             let winRate = 'N/A';
             let totalTrades = 0;
             
-            // Portfolio data
+            // Portfolio data - use correct Hyperlens API structure
             if (portfolio) {
                 if (portfolio.accountValueHistory && portfolio.accountValueHistory.length > 0) {
                     const latestValue = portfolio.accountValueHistory[portfolio.accountValueHistory.length - 1];
@@ -160,6 +366,10 @@
                 if (portfolio.pnlHistory && portfolio.pnlHistory.length > 0) {
                     const latestPnL = portfolio.pnlHistory[portfolio.pnlHistory.length - 1];
                     totalPnL = parseFloat(latestPnL[1]);
+                }
+                // Add volume from Hyperlens API
+                if (portfolio.vlm) {
+                    totalVolume = parseFloat(portfolio.vlm);
                 }
             }
             
@@ -269,22 +479,41 @@
             const list = document.getElementById('liquidations-list');
             
             if (liquidations && liquidations.length > 0) {
-                list.innerHTML = liquidations.map(liq => `
-                    <div class="liquidation-item">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>${liq.coin || 'UNKNOWN'}</strong>
-                                <span style="margin-left: 10px; color: #ff4444;">${liq.side || 'UNKNOWN'}</span>
+                list.innerHTML = liquidations.map(liq => {
+                    // Fix notional value calculation
+                    const notional = liq.notional || liq.size || (Math.abs(liq.sz || 0) * (liq.px || 0)) || 0;
+                    
+                    // Fix timestamp handling
+                    let timestamp = 'Unknown time';
+                    if (liq.time) {
+                        try {
+                            const time = typeof liq.time === 'number' ? liq.time : parseInt(liq.time);
+                            timestamp = new Date(time * 1000).toLocaleString();
+                        } catch (e) {
+                            timestamp = 'Invalid time';
+                        }
+                    }
+                    
+                    // Fix side display
+                    const sideDisplay = liq.side === 'B' ? 'LONG' : liq.side === 'A' ? 'SHORT' : (liq.side || 'UNKNOWN');
+                    
+                    return `
+                        <div class="liquidation-item">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong>${liq.coin || 'UNKNOWN'}</strong>
+                                    <span style="margin-left: 10px; color: #ff4444;">${sideDisplay}</span>
+                                </div>
+                                <div style="color: #ff4444; font-weight: bold;">
+                                    $${formatNumber(Math.abs(notional))}
+                                </div>
                             </div>
-                            <div style="color: #ff4444; font-weight: bold;">
-                                $${formatNumber(Math.abs(liq.notional || 0))}
+                            <div style="font-size: 12px; color: #ccc; margin-top: 5px;">
+                                ${timestamp}
                             </div>
                         </div>
-                        <div style="font-size: 12px; color: #ccc; margin-top: 5px;">
-                            ${liq.time ? new Date(liq.time * 1000).toLocaleString() : 'Unknown time'}
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } else {
                 list.innerHTML = '<div style="text-align: center; color: #ccc; padding: 20px;">No liquidations found</div>';
             }
@@ -301,9 +530,25 @@
                 <h2>💹 Recent Trading Activity</h2>
                 <div id="recent-fills-list">
                     ${fills.slice(0, 10).map(fill => {
-                        const pnl = fill.closedPnl || 0;
+                        // Use the actual closedPnl from Hyperlens API (in coin value)
+                        const pnl = parseFloat(fill.closedPnl || 0);
                         const isWin = pnl > 0;
-                        const positionType = fill.side === 'B' ? 'LONG' : 'SHORT';
+                        const positionType = fill.side === 'B' ? 'LONG' : fill.side === 'A' ? 'SHORT' : 'UNKNOWN';
+                        
+                        // Calculate USD value using current price
+                        const coinPrice = parseFloat(fill.px || 0);
+                        const pnlUSD = pnl * coinPrice;
+                        
+                        // Fix timestamp - handle ISO string format from Hyperlens
+                        let timestamp = 'Unknown time';
+                        if (fill.time) {
+                            try {
+                                // Handle ISO string format: "2025-10-16T01:26:07.509Z"
+                                timestamp = new Date(fill.time).toLocaleString();
+                            } catch (e) {
+                                timestamp = 'Invalid time';
+                            }
+                        }
                         
                         return `
                             <div class="fill-item">
@@ -314,15 +559,18 @@
                                             ${isWin ? '✅ WON' : '❌ LOST'} ${positionType}
                                         </span>
                                         <span style="margin-left: 10px; font-size: 12px; color: #ccc;">
-                                            ${Math.abs(fill.sz || 0)} @ $${(fill.px || 0).toFixed(2)}
+                                            ${Math.abs(fill.sz || 0)} @ $${coinPrice.toFixed(2)}
                                         </span>
                                     </div>
                                     <div style="color: ${isWin ? '#00ff41' : '#ff4444'}; font-weight: bold;">
-                                        ${isWin ? '+' : ''}$${formatNumber(Math.abs(pnl))}
+                                        ${isWin ? '+' : ''}${Math.abs(pnl).toFixed(4)} ${fill.coin || ''}
+                                        <span style="font-size: 11px; color: #888; margin-left: 5px;">
+                                            ($${formatNumber(Math.abs(pnlUSD))})
+                                        </span>
                                     </div>
                                 </div>
                                 <div style="font-size: 12px; color: #ccc; margin-top: 5px;">
-                                    ${new Date(fill.time).toLocaleString()}
+                                    ${timestamp}
                                 </div>
                             </div>
                         `;
