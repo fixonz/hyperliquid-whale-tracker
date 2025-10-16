@@ -1,5 +1,6 @@
 import axios from 'axios';
 import chalk from 'chalk';
+import { CopyTradingDetector } from '../analyzers/copyTradingDetector.js';
 
 export class AlertManager {
   constructor(config = {}) {
@@ -14,6 +15,8 @@ export class AlertManager {
 
     this.alertHistory = [];
     this.recentAlerts = new Set(); // Prevent duplicate alerts
+    this.copyTradingDetector = new CopyTradingDetector();
+    this.liquidationThreshold = 35000; // Only show liquidations over $35K
   }
 
   /**
@@ -133,17 +136,38 @@ export class AlertManager {
    * Send immediate liquidation alert
    */
   async sendLiquidationAlert(position, liquidationPrice) {
+    const notional = Math.abs(position.size * liquidationPrice);
+    
+    // Only send alerts for liquidations over $35K
+    if (notional < this.liquidationThreshold) {
+      console.log(`💰 Liquidation below threshold: $${notional.toLocaleString()} (min: $${this.liquidationThreshold.toLocaleString()})`);
+      return;
+    }
+
+    // Analyze for copy trading
+    const liquidation = {
+      asset: position.asset,
+      side: position.side,
+      address: position.address,
+      liquidationPrice: liquidationPrice,
+      notional: notional,
+      time: Date.now()
+    };
+
+    const copyTradingInfo = await this.copyTradingDetector.analyzeLiquidation(liquidation);
+
     const alert = {
       type: 'LIQUIDATION',
       timestamp: Date.now(),
       asset: position.asset,
       side: position.side,
       address: position.address,
-      notional: Math.abs(position.size * liquidationPrice),
+      notional: notional,
       liquidationPrice: liquidationPrice,
       entryPrice: position.entryPrice,
       leverage: position.leverage,
-      pnl: position.unrealizedPnL || 0
+      pnl: position.unrealizedPnL || 0,
+      copyTradingInfo: copyTradingInfo
     };
 
     await this.sendAlert(alert);
@@ -467,7 +491,13 @@ export class AlertManager {
         let msg = isTest ? `🧪 TEST LIQUIDATION ALERT\n` : '';
         msg += `${sideEmoji} #${asset} - ${sideText}\n`;
         msg += `Liquidated $${notionalFormatted} at $${Number(price).toLocaleString()}\n`;
-        msg += `-- <a href="https://hyperliquid-alerts.onrender.com/summary/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
+        
+        // Add copy trading information if detected
+        if (alert.copyTradingInfo) {
+          msg += this.copyTradingDetector.formatCopyTradingAlert(alert, alert.copyTradingInfo);
+        }
+        
+        msg += `\n-- <a href="https://hyperliquid-alerts.onrender.com/summary/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
         
         return msg;
       }

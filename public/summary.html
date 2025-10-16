@@ -291,6 +291,7 @@
         async function loadAddressSummary(address, highlight = null) {
             try {
                 document.getElementById('address-text').textContent = address;
+                console.log('🔍 Loading data for address:', address);
                 
                 // Load multiple data sources from Hyperlens.io
                 const [portfolioData, positionsData, fillsData, liquidationsData, performanceData] = await Promise.allSettled([
@@ -332,6 +333,8 @@
                 const liquidations = liquidationsData.status === 'fulfilled' ? liquidationsData.value : null;
                 const performance = performanceData.status === 'fulfilled' ? performanceData.value : null;
                 
+                console.log('📊 Data loaded:', { portfolio: !!portfolio, positions: !!positions, fills: !!fills, liquidations: !!liquidations, performance: !!performance });
+                
                 // Render the data
                 renderSummaryData(address, portfolio, positions, fills, liquidations, performance, highlight);
                 
@@ -342,7 +345,7 @@
                 console.error('Error loading summary:', error);
                 document.getElementById('error').style.display = 'block';
                 document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').innerHTML = '<div>❌ Failed to load data</div>';
+                document.getElementById('error').innerHTML = `<div>❌ Failed to load data: ${error.message}</div>`;
             }
         }
         
