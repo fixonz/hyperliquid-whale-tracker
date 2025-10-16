@@ -20,8 +20,37 @@ export class AlertManager {
    * Send big position alert (100M+)
    */
   async sendBigPositionAlert(position, whale) {
+    const notional = Math.abs(position.size * position.entryPrice);
+    const wallet = position.address ? `${position.address.slice(0, 6)}...${position.address.slice(-4)}` : 'Unknown';
+    
     const alert = {
       type: 'BIG_POSITION',
+      timestamp: Date.now(),
+      asset: position.asset,
+      side: position.side,
+      address: position.address,
+      notional: notional,
+      entryPrice: position.entryPrice,
+      leverage: position.leverage,
+      whaleRoi: whale?.roi || 0,
+      message: `🚨 BIG POSITION OPENED\n\n` +
+               `💰 ${position.asset} ${position.side}\n` +
+               `💵 Size: $${this.formatLargeNumber(notional)}\n` +
+               `📊 Entry: $${Number(position.entryPrice || 0).toLocaleString()}\n` +
+               `⚡ Leverage: ${Number(position.leverage || 0).toFixed(1)}x\n` +
+               `👤 Wallet: <a href="https://hyperliquid-alerts.onrender.com/summary/${position.address}">${wallet}</a>\n` +
+               `${whale?.roi ? `📈 ROI: ${Number(whale.roi).toFixed(1)}%` : ''}`
+    };
+
+    await this.sendAlert(alert, true); // true = pin this message
+  }
+
+  /**
+   * Send HOT position alert for positions $1M-$100M
+   */
+  async sendHotPositionAlert(position, whale) {
+    const alert = {
+      type: 'HOT_POSITION',
       timestamp: Date.now(),
       asset: position.asset,
       side: position.side,
@@ -30,7 +59,7 @@ export class AlertManager {
       entryPrice: position.entryPrice,
       leverage: position.leverage,
       whaleRoi: whale?.roi || 0,
-      message: `🚨 MASSIVE POSITION OPENED: #${position.asset} ${position.side} $${this.formatLargeNumber(Math.abs(position.size * position.entryPrice))}`
+      message: `🔥 HOT POSITION: #${position.asset} ${position.side} $${this.formatLargeNumber(Math.abs(position.size * position.entryPrice))}`
     };
 
     await this.sendAlert(alert, true); // true = pin this message

@@ -750,15 +750,18 @@ class LiquidationMonitor {
   async analyzePositions(positions) {
     const analysis = this.liquidationAnalyzer.analyzePositions(positions, this.currentPrices);
 
-    // Check for big positions (100M+) and liquidation risks
+    // Check for big positions and liquidation risks
     for (const pos of analysis) {
-      // Check for massive positions (100M+)
-      if (pos.notionalValue >= 100000000) { // 100M threshold
+      // Check for BIG positions ($10M+) - send alert AND pin
+      if (pos.notionalValue >= 10000000) { // $10M+ threshold
         const whale = this.whaleTracker.getWhale(pos.address);
         await this.alertManager.sendBigPositionAlert(pos, whale);
-        console.log(chalk.yellow.bold(`🚨 MASSIVE POSITION: ${pos.asset} ${pos.side} $${this.formatNumber(pos.notionalValue)}`));
-        
-        // Add to digest as whale activity
+        console.log(chalk.red.bold(`🚨 BIG POSITION: ${pos.asset} ${pos.side} $${this.formatNumber(pos.notionalValue)} - ALERT & PIN SENT`));
+      }
+      
+      // Add significant positions to digest (over whale threshold)
+      if (pos.notionalValue >= this.whaleThreshold) {
+        const whale = this.whaleTracker.getWhale(pos.address);
         this.digestManager.addWhaleOpen(pos, whale);
       }
       
