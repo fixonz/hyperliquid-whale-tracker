@@ -216,14 +216,7 @@
     <div class="container">
         <header class="header">
             <h1>🚨 Hyperliquid Alert</h1>
-            <div class="status" id="status">Loading...</div>
         </header>
-
-        <nav class="nav-bar">
-            <button class="nav-btn active" onclick="scrollToSection('summary')">📊 Summary</button>
-            <button class="nav-btn" onclick="scrollToSection('liquidations')">💥 Liquidations</button>
-            <a href="/" class="nav-btn">← Back to Dashboard</a>
-        </nav>
 
         <div class="main-grid">
             <div id="loading" class="panel" style="text-align: center; padding: 40px;">
@@ -490,9 +483,30 @@
                     let timestamp = 'Unknown time';
                     if (liq.time) {
                         try {
-                            const time = typeof liq.time === 'number' ? liq.time : parseInt(liq.time);
-                            timestamp = new Date(time * 1000).toLocaleString();
+                            let timeValue = liq.time;
+                            
+                            // Handle different timestamp formats
+                            if (typeof timeValue === 'string') {
+                                // ISO string format: "2025-10-16T01:26:07.509Z"
+                                if (timeValue.includes('T')) {
+                                    timestamp = new Date(timeValue).toLocaleString();
+                                } else {
+                                    // Unix timestamp as string
+                                    timeValue = parseInt(timeValue);
+                                    timestamp = new Date(timeValue * 1000).toLocaleString();
+                                }
+                            } else if (typeof timeValue === 'number') {
+                                // Unix timestamp as number (in seconds)
+                                if (timeValue < 10000000000) { // Less than year 2286, assume seconds
+                                    timestamp = new Date(timeValue * 1000).toLocaleString();
+                                } else { // Already in milliseconds
+                                    timestamp = new Date(timeValue).toLocaleString();
+                                }
+                            }
+                            
+                            console.log('🔍 Liquidation timestamp debug:', { original: liq.time, parsed: timestamp });
                         } catch (e) {
+                            console.error('Liquidation timestamp parsing error:', e, liq.time);
                             timestamp = 'Invalid time';
                         }
                     }
@@ -542,13 +556,34 @@
                         const coinPrice = parseFloat(fill.px || 0);
                         const pnlUSD = pnl * coinPrice;
                         
-                        // Fix timestamp - handle ISO string format from Hyperlens
+                        // Fix timestamp - handle different formats from Hyperlens
                         let timestamp = 'Unknown time';
                         if (fill.time) {
                             try {
-                                // Handle ISO string format: "2025-10-16T01:26:07.509Z"
-                                timestamp = new Date(fill.time).toLocaleString();
+                                let timeValue = fill.time;
+                                
+                                // Handle different timestamp formats
+                                if (typeof timeValue === 'string') {
+                                    // ISO string format: "2025-10-16T01:26:07.509Z"
+                                    if (timeValue.includes('T')) {
+                                        timestamp = new Date(timeValue).toLocaleString();
+                                    } else {
+                                        // Unix timestamp as string
+                                        timeValue = parseInt(timeValue);
+                                        timestamp = new Date(timeValue * 1000).toLocaleString();
+                                    }
+                                } else if (typeof timeValue === 'number') {
+                                    // Unix timestamp as number (in seconds)
+                                    if (timeValue < 10000000000) { // Less than year 2286, assume seconds
+                                        timestamp = new Date(timeValue * 1000).toLocaleString();
+                                    } else { // Already in milliseconds
+                                        timestamp = new Date(timeValue).toLocaleString();
+                                    }
+                                }
+                                
+                                console.log('🔍 Timestamp debug:', { original: fill.time, parsed: timestamp });
                             } catch (e) {
+                                console.error('Timestamp parsing error:', e, fill.time);
                                 timestamp = 'Invalid time';
                             }
                         }
