@@ -17,6 +17,20 @@ export class AlertManager {
     this.recentAlerts = new Set(); // Prevent duplicate alerts
     this.copyTradingDetector = new CopyTradingDetector();
     this.liquidationThreshold = 100000; // Only show liquidations over $100K
+    
+    // Alert frequency controls
+    this.alertCooldowns = new Map(); // Track cooldowns per alert type
+    this.cooldownPeriods = {
+      'HOT_POSITION': 10 * 60 * 1000,      // 10 minutes for HOT positions
+      'BIG_POSITION': 5 * 60 * 1000,       // 5 minutes for BIG positions
+      'LIQUIDATION': 2 * 60 * 1000,        // 2 minutes for liquidations
+      'GROUPED_HOT_POSITIONS': 15 * 60 * 1000,  // 15 minutes for grouped HOT
+      'GROUPED_BIG_POSITIONS': 10 * 60 * 1000   // 10 minutes for grouped BIG
+    };
+    
+    // Rate limiting for same asset
+    this.assetAlertTimes = new Map(); // Track last alert time per asset
+    this.assetCooldown = 5 * 60 * 1000; // 5 minutes between alerts for same asset
   }
 
   /**
@@ -35,6 +49,14 @@ export class AlertManager {
     const url = `https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
     
     return `<a href="${url}">${escapedText}</a>`;
+  }
+
+  /**
+   * Format simple link for Telegram (fallback method)
+   */
+  formatSimpleLink(address, displayText) {
+    const url = `https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
+    return `${displayText}\n🔗 ${url}`;
   }
 
   /**
@@ -73,7 +95,8 @@ export class AlertManager {
           Math.abs((pos.liquidationPx - pos.entryPrice) / pos.entryPrice * 100) : 0;
         
         message += `${i + 1}. ${pos.side} $${this.formatLargeNumber(pos.notionalValue)}\n`;
-        message += `   👤 ` + this.formatTelegramLink(pos.address, wallet) + `\n`;
+        message += `   👤 ${wallet}\n`;
+        message += `   🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${pos.address}\n`;
         message += `   📊 Entry: $${Number(pos.entryPrice || 0).toLocaleString()}\n`;
         message += `   ⚡ Leverage: ${Number(pos.leverage || 0).toFixed(1)}x\n`;
         
@@ -161,7 +184,8 @@ export class AlertManager {
                `💵 Size: $${this.formatLargeNumber(notional)}\n` +
                `📊 Entry: $${Number(position.entryPrice || 0).toLocaleString()}\n` +
                `⚡ Leverage: ${Number(position.leverage || 0).toFixed(1)}x\n` +
-               `👤 Wallet: ` + this.formatTelegramLink(position.address, wallet) + `\n` +
+               `👤 Wallet: ${wallet}\n` +
+               `🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${position.address}\n` +
                `${whale?.roi ? `📈 ROI: ${Number(whale.roi).toFixed(1)}%` : ''}` +
                walletStats
     };
@@ -205,7 +229,8 @@ export class AlertManager {
           Math.abs((pos.liquidationPx - pos.entryPrice) / pos.entryPrice * 100) : 0;
         
         message += `${i + 1}. ${pos.side} $${this.formatLargeNumber(pos.notionalValue)}\n`;
-        message += `   👤 ` + this.formatTelegramLink(pos.address, wallet) + `\n`;
+        message += `   👤 ${wallet}\n`;
+        message += `   🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${pos.address}\n`;
         message += `   📊 Entry: $${Number(pos.entryPrice || 0).toLocaleString()}\n`;
         message += `   ⚡ Leverage: ${Number(pos.leverage || 0).toFixed(1)}x\n`;
         
@@ -289,7 +314,8 @@ export class AlertManager {
                `💰 ${position.asset} ${position.side}\n` +
                `💵 Size: $${this.formatLargeNumber(notional)}\n` +
                `⚡ Leverage: ${Number(position.leverage || 0).toFixed(1)}x\n` +
-               `👤 ` + this.formatTelegramLink(position.address, wallet) +
+               `👤 ${wallet}\n` +
+               `🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${position.address}\n` +
                walletStats
     };
 
@@ -338,18 +364,60 @@ export class AlertManager {
   }
 
   /**
+   * Check if alert should be sent based on cooldowns and rate limits
+   */
+  shouldSendAlert(alert) {
+    const alertKey = this.getAlertKey(alert);
+    const now = Date.now();
+    
+    // Check for duplicate alerts within 5 minutes
+    if (this.recentAlerts.has(alertKey)) {
+      return false;
+    }
+    
+    // Check alert type cooldown
+    const cooldownPeriod = this.cooldownPeriods[alert.type];
+    if (cooldownPeriod) {
+      const lastAlertTime = this.alertCooldowns.get(alert.type) || 0;
+      if (now - lastAlertTime < cooldownPeriod) {
+        console.log(`⏰ Alert ${alert.type} on cooldown (${Math.round((cooldownPeriod - (now - lastAlertTime)) / 1000)}s remaining)`);
+        return false;
+      }
+    }
+    
+    // Check asset-specific cooldown (prevent spam for same asset)
+    if (alert.asset) {
+      const lastAssetAlertTime = this.assetAlertTimes.get(alert.asset) || 0;
+      if (now - lastAssetAlertTime < this.assetCooldown) {
+        console.log(`⏰ Asset ${alert.asset} on cooldown (${Math.round((this.assetCooldown - (now - lastAssetAlertTime)) / 1000)}s remaining)`);
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  /**
    * Send an alert through all configured channels
    */
   async sendAlert(alert, shouldPin = false) {
-    const alertKey = this.getAlertKey(alert);
-    
-    // Prevent duplicate alerts within 5 minutes
-    if (this.recentAlerts.has(alertKey)) {
+    // Check if alert should be sent based on cooldowns
+    if (!this.shouldSendAlert(alert)) {
       return;
     }
 
+    const alertKey = this.getAlertKey(alert);
+    const now = Date.now();
+    
+    // Mark as sent and set cooldowns
     this.recentAlerts.add(alertKey);
     setTimeout(() => this.recentAlerts.delete(alertKey), 5 * 60 * 1000);
+    
+    // Update cooldown timestamps
+    this.alertCooldowns.set(alert.type, now);
+    if (alert.asset) {
+      this.assetAlertTimes.set(alert.asset, now);
+    }
 
     // Store in history
     this.alertHistory.push({
@@ -637,7 +705,8 @@ export class AlertManager {
         msg += `${sideEmoji} #${asset} - ${sideText}\n`;
         msg += `Size: $${notionalFormatted} at $${Number(alert.entryPrice || 0).toLocaleString()}\n`;
         msg += `Leverage: ${Number(alert.leverage || 0).toFixed(1)}x\n`;
-        msg += `-- ` + this.formatTelegramLink(address, `${address.slice(0, 6)}...${address.slice(-4)}`);
+        msg += `-- ${address.slice(0, 6)}...${address.slice(-4)}\n`;
+        msg += `🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
         
         return msg;
       }
@@ -661,7 +730,8 @@ export class AlertManager {
           msg += this.copyTradingDetector.formatCopyTradingAlert(alert, alert.copyTradingInfo);
         }
         
-        msg += `\n-- ` + this.formatTelegramLink(address, `${address.slice(0, 6)}...${address.slice(-4)}`);
+        msg += `\n-- ${address.slice(0, 6)}...${address.slice(-4)}\n`;
+        msg += `🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
         
         return msg;
       }
