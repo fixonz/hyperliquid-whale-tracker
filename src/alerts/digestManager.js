@@ -394,7 +394,8 @@ export class DigestManager {
         const emoji = pos.side === 'LONG' ? '🟢' : '🔴';
         const wallet = pos.address ? `${pos.address.slice(0, 6)}...${pos.address.slice(-4)}` : 'Unknown';
         message += `${emoji} ${pos.asset} ${pos.side} $${this.formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x\n`;
-        message += `   ` + this.formatTelegramLink(pos.address, wallet) + `\n`;
+        message += `   👤 ${wallet}\n`;
+        message += `   🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${pos.address}\n`;
       });
     }
 

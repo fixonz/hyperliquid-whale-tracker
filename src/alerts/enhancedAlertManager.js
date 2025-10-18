@@ -410,7 +410,8 @@ ${side} ${position.asset}
     let msg = baseMessage;
     
     if (address) {
-      msg += `\n\n🔗 ` + this.formatTelegramLink(address, `${address.slice(0, 6)}...${address.slice(-4)}`);
+      msg += `\n\n👤 ${address.slice(0, 6)}...${address.slice(-4)}\n`;
+      msg += `🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
     }
     
     // Add API attribution every 5th alert to avoid spam
