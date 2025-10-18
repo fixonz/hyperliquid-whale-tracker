@@ -34,21 +34,11 @@ export class AlertManager {
   }
 
   /**
-   * Format HTML link for Telegram (properly escape special characters)
+   * Format clickable link for Telegram (HTML anchor tags)
    */
   formatTelegramLink(address, displayText) {
-    // Escape HTML special characters in the display text
-    const escapedText = displayText
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-    
-    // Ensure the URL is properly formatted
     const url = `https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
-    
-    return `<a href="${url}">${escapedText}</a>`;
+    return `<a href="${url}">${displayText}</a>`;
   }
 
   /**
@@ -95,8 +85,7 @@ export class AlertManager {
           Math.abs((pos.liquidationPx - pos.entryPrice) / pos.entryPrice * 100) : 0;
         
         message += `${i + 1}. ${pos.side} $${this.formatLargeNumber(pos.notionalValue)}\n`;
-        message += `   👤 ${wallet}\n`;
-        message += `   🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${pos.address}\n`;
+        message += `   👤 ` + this.formatTelegramLink(pos.address, wallet) + `\n`;
         message += `   📊 Entry: $${Number(pos.entryPrice || 0).toLocaleString()}\n`;
         message += `   ⚡ Leverage: ${Number(pos.leverage || 0).toFixed(1)}x\n`;
         
@@ -184,8 +173,7 @@ export class AlertManager {
                `💵 Size: $${this.formatLargeNumber(notional)}\n` +
                `📊 Entry: $${Number(position.entryPrice || 0).toLocaleString()}\n` +
                `⚡ Leverage: ${Number(position.leverage || 0).toFixed(1)}x\n` +
-               `👤 Wallet: ${wallet}\n` +
-               `🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${position.address}\n` +
+               `👤 Wallet: ` + this.formatTelegramLink(position.address, wallet) + `\n` +
                `${whale?.roi ? `📈 ROI: ${Number(whale.roi).toFixed(1)}%` : ''}` +
                walletStats
     };
@@ -229,8 +217,7 @@ export class AlertManager {
           Math.abs((pos.liquidationPx - pos.entryPrice) / pos.entryPrice * 100) : 0;
         
         message += `${i + 1}. ${pos.side} $${this.formatLargeNumber(pos.notionalValue)}\n`;
-        message += `   👤 ${wallet}\n`;
-        message += `   🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${pos.address}\n`;
+        message += `   👤 ` + this.formatTelegramLink(pos.address, wallet) + `\n`;
         message += `   📊 Entry: $${Number(pos.entryPrice || 0).toLocaleString()}\n`;
         message += `   ⚡ Leverage: ${Number(pos.leverage || 0).toFixed(1)}x\n`;
         
@@ -314,8 +301,7 @@ export class AlertManager {
                `💰 ${position.asset} ${position.side}\n` +
                `💵 Size: $${this.formatLargeNumber(notional)}\n` +
                `⚡ Leverage: ${Number(position.leverage || 0).toFixed(1)}x\n` +
-               `👤 ${wallet}\n` +
-               `🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${position.address}\n` +
+               `👤 ` + this.formatTelegramLink(position.address, wallet) + `\n` +
                walletStats
     };
 
@@ -705,8 +691,7 @@ export class AlertManager {
         msg += `${sideEmoji} #${asset} - ${sideText}\n`;
         msg += `Size: $${notionalFormatted} at $${Number(alert.entryPrice || 0).toLocaleString()}\n`;
         msg += `Leverage: ${Number(alert.leverage || 0).toFixed(1)}x\n`;
-        msg += `-- ${address.slice(0, 6)}...${address.slice(-4)}\n`;
-        msg += `🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
+        msg += `-- ` + this.formatTelegramLink(address, `${address.slice(0, 6)}...${address.slice(-4)}`);
         
         return msg;
       }
@@ -730,8 +715,7 @@ export class AlertManager {
           msg += this.copyTradingDetector.formatCopyTradingAlert(alert, alert.copyTradingInfo);
         }
         
-        msg += `\n-- ${address.slice(0, 6)}...${address.slice(-4)}\n`;
-        msg += `🔗 https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
+        msg += `\n-- ` + this.formatTelegramLink(address, `${address.slice(0, 6)}...${address.slice(-4)}`);
         
         return msg;
       }
