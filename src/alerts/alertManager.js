@@ -680,8 +680,9 @@ export class AlertManager {
     try {
       // Special format for liquidation alerts
       
-      if (alert.type === 'HOT_POSITION' || alert.type === 'BIG_POSITION') {
-        // For HOT_POSITION and BIG_POSITION, just return the message as-is since it already has the link
+      if (alert.type === 'HOT_POSITION' || alert.type === 'BIG_POSITION' || 
+          alert.type === 'GROUPED_HOT_POSITIONS' || alert.type === 'GROUPED_BIG_POSITIONS') {
+        // For these alert types, just return the message as-is since it already has the link
         return alert.message || '';
       }
       
