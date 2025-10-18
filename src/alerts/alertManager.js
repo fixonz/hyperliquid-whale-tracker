@@ -679,21 +679,10 @@ export class AlertManager {
   formatTelegramMessage(alert) {
     try {
       // Special format for liquidation alerts
-      // Special formatting for big position alerts
-      if (alert.type === 'BIG_POSITION') {
-        const sideEmoji = alert.side === 'LONG' ? '🟢' : '🔴';
-        const sideText = alert.side === 'LONG' ? 'Long' : 'Short';
-        const notionalFormatted = this.formatLargeNumber(alert.notional || alert.notionalValue || 0);
-        const asset = (alert.asset || 'UNKNOWN').replace(/[<>&]/g, '');
-        const address = (alert.address || '').replace(/[<>&]/g, '');
-        
-        let msg = `🚨 MAJOR POSITION OPENED\n`;
-        msg += `${sideEmoji} #${asset} - ${sideText}\n`;
-        msg += `Size: $${notionalFormatted} at $${Number(alert.entryPrice || 0).toLocaleString()}\n`;
-        msg += `Leverage: ${Number(alert.leverage || 0).toFixed(1)}x\n`;
-        msg += `-- ` + this.formatTelegramLink(address, `${address.slice(0, 6)}...${address.slice(-4)}`);
-        
-        return msg;
+      
+      if (alert.type === 'HOT_POSITION' || alert.type === 'BIG_POSITION') {
+        // For HOT_POSITION and BIG_POSITION, just return the message as-is since it already has the link
+        return alert.message || '';
       }
       
       if (alert.type === 'LIQUIDATION') {
