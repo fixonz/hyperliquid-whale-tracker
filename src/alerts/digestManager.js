@@ -276,7 +276,7 @@ export class DigestManager {
         message += `  ${sideEmoji} ${pos.asset} ${pos.side}: $${this.formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x\n`;
       }
       
-      message += `  💰 Wallet Total: $${this.formatLargeNumber(addressTotal)}\n\n`;
+      message += `\n  💰 Wallet Total: $${this.formatLargeNumber(addressTotal)}\n\n`;
     }
     
     // Send as alert
