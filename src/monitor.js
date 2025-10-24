@@ -1,4 +1,6 @@
 import dotenv from 'dotenv';
+import fs from 'fs/promises';
+import path from 'path';
 import chalk from 'chalk';
 import { HyperliquidAPI } from './api/hyperliquid.js';
 import { WhaleTracker } from './trackers/whaleTracker.js';
@@ -101,6 +103,9 @@ class LiquidationMonitor {
     const existingWhales = this.whaleTracker.getWhaleAddresses();
     existingWhales.forEach(addr => this.knownAddresses.add(addr));
 
+    // Immediately load seed addresses from file if present
+    await this.loadSeedAddressesFromFile();
+
     // If no addresses, start with some well-known ones or discover via API
     if (this.knownAddresses.size === 0) {
       console.log(chalk.yellow('No existing whale addresses found. Starting discovery...'));
@@ -127,6 +132,10 @@ class LiquidationMonitor {
     } catch (e) {
       console.log(chalk.yellow(`⚠️ Top traders refresh failed: ${e.message}`));
     }
+
+    // Kick off discovery jobs immediately so we show alerts ASAP
+    try { await this.discoverNewWhales(); } catch {}
+    try { await this.findActiveAddressesFromTrades(); } catch {}
   }
 
   /**
@@ -195,6 +204,29 @@ class LiquidationMonitor {
           });
         }
       }
+    }
+  }
+
+  /**
+   * Load seed addresses from data/whales.json (legacy file) and add to tracking
+   */
+  async loadSeedAddressesFromFile() {
+    try {
+      const whalesPath = path.join(process.cwd(), 'data', 'whales.json');
+      const content = await fs.readFile(whalesPath, 'utf8');
+      const parsed = JSON.parse(content);
+      let added = 0;
+      for (const addr of Object.keys(parsed || {})) {
+        if (addr && addr.startsWith('0x') && !this.knownAddresses.has(addr)) {
+          this.addAddress(addr);
+          added++;
+        }
+      }
+      if (added > 0) {
+        console.log(chalk.green(`📦 Seeded ${added} addresses from data/whales.json`));
+      }
+    } catch {
+      // no file, ignore
     }
   }
 
@@ -790,8 +822,9 @@ class LiquidationMonitor {
             // Also add to digest
             this.digestManager.addLiquidation(position);
             
-            // Remove from tracker
+            // Remove from tracker and DB current position to prevent double counting in heatmap/volume
             this.whaleTracker.positions.delete(positionId);
+            try { PositionsRepo.delete(position.address, position.asset); } catch {}
           } else {
             // Consider this a manual close (take-profit/stop) follow-up
             const alert = {
@@ -808,8 +841,9 @@ class LiquidationMonitor {
             try {
               AlertsRepo.insert({ ...alert, created_at: alert.timestamp });
             } catch {}
-            // Remove from tracker
+            // Remove from tracker and DB
             this.whaleTracker.positions.delete(positionId);
+            try { PositionsRepo.delete(position.address, position.asset); } catch {}
           }
         }
       }
