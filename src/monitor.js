@@ -752,7 +752,7 @@ class LiquidationMonitor {
             
             // Update whale data with fills (fetch every few scans to reduce API load)
             const shouldFetchFills = !this.whaleTracker.getWhale(address) || 
-                                   (Date.now() - this.whaleTracker.getWhale(address)?.lastFillsUpdate || 0) > 60000; // 1 minute for liquidation detection
+                                   (Date.now() - (this.whaleTracker.getWhale(address)?.lastFillsUpdate || 0)) > 120000; // 2 minutes to reduce upstream load
             
             if (shouldFetchFills) {
               try {

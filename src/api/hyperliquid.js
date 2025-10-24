@@ -7,7 +7,7 @@ export class HyperliquidAPI {
       baseURL: apiUrl,
       headers: { 'Content-Type': 'application/json' }
     });
-    this.requestDelay = 500; // 500ms between requests to avoid rate limits
+    this.requestDelay = 800; // slightly slower to avoid upstream 5xx under load
     this.lastRequestTime = 0;
   }
 
@@ -81,10 +81,8 @@ export class HyperliquidAPI {
       if (error.response?.status === 429) {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
-      // Don't log rate limit errors
-      if (error.response?.status !== 429) {
-        console.error(`Error fetching fills for ${address}:`, error.message);
-      }
+      // Silence transient upstream errors (e.g., 500) and return empty
+      // We still surface unexpected conditions via optional debug logging upstream
       return [];
     }
   }

@@ -23,8 +23,23 @@ export class WhaleTracker {
       const positionsPath = path.join(this.dataDir, 'positions.json');
 
       if (fs.existsSync(whalesPath)) {
-        const data = JSON.parse(fs.readFileSync(whalesPath, 'utf-8'));
-        this.whales = new Map(Object.entries(data));
+        const raw = JSON.parse(fs.readFileSync(whalesPath, 'utf-8'));
+        // Support multiple formats: {address: obj}, {whales: [...]}, [...]
+        let entries = [];
+        if (Array.isArray(raw)) {
+          entries = raw
+            .map(w => [w?.address, w])
+            .filter(([addr]) => typeof addr === 'string' && addr.startsWith('0x'));
+        } else if (raw && Array.isArray(raw.whales)) {
+          entries = raw.whales
+            .map(w => [w?.address, w])
+            .filter(([addr]) => typeof addr === 'string' && addr.startsWith('0x'));
+        } else if (raw && typeof raw === 'object') {
+          entries = Object.entries(raw).filter(([k, v]) => k.startsWith('0x'));
+        }
+        if (entries.length > 0) {
+          this.whales = new Map(entries);
+        }
       }
 
       // To avoid stale positions on boot, skip loading positions.json by default.
@@ -64,10 +79,10 @@ export class WhaleTracker {
     const positionsByAsset = new Map();
 
     for (const fill of fills) {
-      const asset = fill.coin;
-      const side = fill.side === 'B' ? 1 : -1; // Buy = 1, Sell = -1
-      const size = parseFloat(fill.sz) * side;
-      const price = parseFloat(fill.px);
+      const asset = fill.coin || fill.asset;
+      const side = (fill.side === 'B' || fill.dir === 'BUY') ? 1 : -1; // Buy = 1, Sell = -1
+      const size = parseFloat(fill.sz || fill.size || 0) * side;
+      const price = parseFloat(fill.px || fill.price || 0);
       const fee = parseFloat(fill.fee || 0);
 
       if (!positionsByAsset.has(asset)) {
