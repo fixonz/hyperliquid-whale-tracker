@@ -153,17 +153,9 @@ class LiquidationMonitor {
     console.log(chalk.green(`✓ Whale threshold: $${this.whaleThreshold.toLocaleString()}`));
     console.log(chalk.green(`✓ Min position size: $${this.alertManager.config.minPositionSize.toLocaleString()}\n`));
 
-    // Initial top-traders refresh (fallback to existing script if available)
+    // Initial top-traders refresh (fetch directly from Hyperliquid API)
     try {
-      await this.topTraders.refresh(async () => {
-        try {
-          const { default: leaderboard } = await import('../scripts/fetch-leaderboard-whales.js');
-          // If script exports data function; otherwise, fall back to empty
-          return Array.isArray(leaderboard) ? leaderboard : [];
-        } catch {
-          return [];
-        }
-      });
+      await this.topTraders.refresh(); // Will use built-in fetchLeaderboardData()
       console.log(chalk.green(`✓ Top traders cached: ${this.topTraders.cache.size}`));
     } catch (e) {
       console.log(chalk.yellow(`⚠️ Top traders refresh failed: ${e.message}`));
