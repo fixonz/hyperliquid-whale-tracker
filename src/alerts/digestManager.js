@@ -257,16 +257,17 @@ export class DigestManager {
     message += `📊 ${totalLongs} Longs • ${totalShorts} Shorts\n`;
     message += `💰 Total Volume: $${this.formatLargeNumber(totalVolume)}\n\n`;
     
-    // Group by address and show positions
+    // Group by address and show positions - only wallets with $25M+ total volume
     const sortedByVolume = Array.from(byAddress.entries())
-      .sort((a, b) => {
-        const totalA = a[1].reduce((sum, p) => sum + p.notional, 0);
-        const totalB = b[1].reduce((sum, p) => sum + p.notional, 0);
-        return totalB - totalA;
-      });
+      .map(([address, positions]) => ({
+        address,
+        positions,
+        total: positions.reduce((sum, p) => sum + p.notional, 0)
+      }))
+      .filter(({ total }) => total >= 25000000) // Only $25M+ wallets
+      .sort((a, b) => b.total - a.total);
     
-    for (const [address, positions] of sortedByVolume) {
-      const addressTotal = positions.reduce((sum, p) => sum + p.notional, 0);
+    for (const { address, positions, total: addressTotal } of sortedByVolume) {
       const walletShort = `${address.slice(0, 6)}...${address.slice(-4)}`;
       
       message += `${this.formatTelegramLink(address, walletShort)}\n`;
