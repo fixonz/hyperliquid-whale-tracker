@@ -71,8 +71,39 @@ class LiquidationMonitor {
   async initializeHyperlensWhales() {
     try {
       console.log(chalk.cyan('🐋 Initializing HyperlensWhaleTracker...'));
+      
+      // First try to load from disk (fast path)
+      const loaded = await this.hyperlensWhaleTracker.loadWhales();
+      if (loaded && loaded.length > 0) {
+        console.log(chalk.green(`✓ Loaded ${loaded.length} whales from disk`));
+        
+        // Add to known addresses for immediate tracking
+        for (const whale of loaded) {
+          this.knownAddresses.add(whale.address);
+        }
+        
+        // Try to fetch fresh data in background (non-blocking)
+        setTimeout(async () => {
+          try {
+            await this.hyperlensWhaleTracker.fetchRealWhales();
+            console.log(chalk.green(`✓ Background refresh: ${this.hyperlensWhaleTracker.whales.size} whales`));
+          } catch (e) {
+            console.log(chalk.yellow(`⚠️ Background refresh failed: ${e.message}`));
+          }
+        }, 5000);
+        
+        return;
+      }
+      
+      // No disk cache, fetch fresh
       await this.hyperlensWhaleTracker.fetchRealWhales();
       console.log(chalk.green(`✓ Loaded ${this.hyperlensWhaleTracker.whales.size} real whales from Hyperlens.io`));
+      
+      // Add to known addresses
+      for (const whale of Array.from(this.hyperlensWhaleTracker.whales.values())) {
+        this.knownAddresses.add(whale.address);
+      }
+      
     } catch (error) {
       console.error(chalk.red('❌ Failed to initialize HyperlensWhaleTracker:'), error.message);
       console.log(chalk.yellow('⚠️ Falling back to basic whale tracking'));
@@ -108,6 +139,8 @@ class LiquidationMonitor {
 
     // Load seed addresses from env (comma-separated)
     this.loadSeedAddressesFromEnv();
+    
+    console.log(chalk.green(`✓ Already tracking ${this.knownAddresses.size} addresses from seeds`));
 
     // If no addresses, start with some well-known ones or discover via API
     if (this.knownAddresses.size === 0) {

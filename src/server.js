@@ -413,8 +413,10 @@ async function startServer() {
 
     // Start HTTP server
     server.listen(PORT, () => {
-      console.log(`\n🌐 Dashboard server running on http://localhost:${PORT}`);
-      console.log(`📊 WebSocket server running on ws://localhost:${PORT}`);
+      const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://hyperliquid-whale-tracker.onrender.com';
+      console.log(`\n🌐 Dashboard server running on port ${PORT}`);
+      console.log(`📊 WebSocket server running on port ${PORT}`);
+      console.log(`🚀 External URL: ${renderUrl}`);
       console.log(`\nAPI Endpoints:`);
       console.log(`  GET  /api/heatmap       - Get liquidation heatmap`);
       console.log(`  GET  /api/stats         - Get monitoring stats`);
