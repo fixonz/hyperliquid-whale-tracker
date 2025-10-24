@@ -70,12 +70,14 @@ class TelegramWhaleTracker {
   async loadInitialData() {
     try {
       const baseUrl = window.location.origin;
-      const [stats, heatmap, alerts, positions, whales] = await Promise.all([
+      const [stats, heatmap, alerts, positions, whales, bigAlerts, followups] = await Promise.all([
         fetch(`${baseUrl}/api/stats`).then(r => r.json()),
         fetch(`${baseUrl}/api/heatmap`).then(r => r.json()),
         fetch(`${baseUrl}/api/alerts`).then(r => r.json()),
         fetch(`${baseUrl}/api/positions`).then(r => r.json()),
-        fetch(`${baseUrl}/api/whales`).then(r => r.json()).catch(() => [])
+        fetch(`${baseUrl}/api/whales`).then(r => r.json()).catch(() => []),
+        fetch(`${baseUrl}/api/alerts/big?limit=20`).then(r => r.json()).catch(() => []),
+        fetch(`${baseUrl}/api/followups?limit=30`).then(r => r.json()).catch(() => [])
       ]);
 
       this.updateStats(stats);
@@ -84,6 +86,8 @@ class TelegramWhaleTracker {
       this.renderPositions(positions);
       this.renderWhales(whales);
       this.populateAssetSelect(heatmap);
+      this.renderBigAlerts(bigAlerts);
+      this.renderFollowups(followups);
     } catch (error) {
       console.error('Error loading initial data:', error);
     }
@@ -124,9 +128,17 @@ class TelegramWhaleTracker {
       return;
     }
 
-    const levels = asset ? 
+    let levels = asset ? 
       (heatmap.assets?.find(a => a.asset === asset)?.levels || []) :
       heatmap.globalLevels;
+
+    // Tighten density for small screens: show top N by notional
+    const isSmall = window.innerWidth <= 480;
+    if (isSmall) {
+      levels = [...levels].sort((a, b) => (b.totalNotional || 0) - (a.totalNotional || 0)).slice(0, 14);
+      // Keep sorted by price after selection
+      levels = levels.sort((a, b) => (a.percentFromCurrent || 0) - (b.percentFromCurrent || 0));
+    }
     
     const maxNotional = Math.max(...levels.map(l => l.totalNotional || 0));
     
@@ -140,7 +152,7 @@ class TelegramWhaleTracker {
       return;
     }
     
-    const barsHTML = levels.slice(0, 20).map(level => {
+    const barsHTML = levels.slice(0, 18).map(level => {
       const height = maxNotional > 0 ? (level.totalNotional / maxNotional) * 100 : 5;
       const isLong = (level.longNotional || 0) > (level.shortNotional || 0);
       const side = isLong ? 'long' : 'short';
@@ -151,6 +163,10 @@ class TelegramWhaleTracker {
 
     const totalRisk = levels.reduce((sum, level) => sum + (level.totalNotional || 0), 0);
     const totalPositions = levels.reduce((sum, level) => sum + (level.positionCount || 0), 0);
+
+    // Also render top clusters list for mobile
+    const clusters = (heatmap.assets || []).flatMap(a => (a.clusters || []).map(c => ({ asset: a.asset, ...c })));
+    const topClusters = clusters.sort((a, b) => (b.totalNotional || 0) - (a.totalNotional || 0)).slice(0, isSmall ? 3 : 5);
 
     container.innerHTML = `
       <div class="heatmap-stats">
@@ -164,6 +180,13 @@ class TelegramWhaleTracker {
         </div>
       </div>
       <div class="heatmap-bars">${barsHTML}</div>
+      ${topClusters.length ? `
+        <div class="heatmap-list" style="margin-top:8px; font-size:12px; color:#aaa;">
+          ${topClusters.map(c => `
+            <div class="heatmap-list-item">${c.asset} • $${this.formatLargeNumber(c.totalNotional)} • ${c.startPercent?.toFixed(1)}%→${c.endPercent?.toFixed(1)}%</div>
+          `).join('')}
+        </div>
+      ` : ''}
     `;
   }
 
@@ -596,6 +619,35 @@ class TelegramWhaleTracker {
       'LARGE_POSITION': 'Large Position Detected'
     };
     return titles[alert.type] || alert.type.replace(/_/g, ' ');
+  }
+
+  renderBigAlerts(alerts) {
+    const container = document.getElementById('big-alerts');
+    if (!container) return;
+    if (!alerts || alerts.length === 0) {
+      container.innerHTML = '<div class="alert-item">No big alerts yet</div>';
+      return;
+    }
+    container.innerHTML = alerts.map(a => {
+      const time = new Date(a.created_at).toLocaleTimeString();
+      const amt = a.notional ? `$${(a.notional).toLocaleString()}` : '';
+      return `<div class="alert-item">${time} • ${a.type} • ${a.asset || ''} ${amt}</div>`;
+    }).join('');
+  }
+
+  renderFollowups(alerts) {
+    const container = document.getElementById('followups');
+    if (!container) return;
+    if (!alerts || alerts.length === 0) {
+      container.innerHTML = '<div class="alert-item">No follow-ups yet</div>';
+      return;
+    }
+    container.innerHTML = alerts.map(a => {
+      const t = new Date(a.created_at).toLocaleTimeString();
+      const amt = a.notional ? `$${(a.notional).toLocaleString()}` : '';
+      const type = a.type.replace(/_/g, ' ');
+      return `<div class=\"alert-item\">${t} • ${type} • ${a.asset || ''} ${amt}</div>`;
+    }).join('');
   }
 }
 

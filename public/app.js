@@ -96,7 +96,7 @@ function handleWebSocketMessage(message) {
 // Fetch initial data
 async function fetchInitialData() {
   try {
-    const [stats, heatmap, positions, alerts, whales, prices, digestStats, hyperlensData, enhancedAlerts] = await Promise.all([
+    const [stats, heatmap, positions, alerts, whales, prices, digestStats, hyperlensData, enhancedAlerts, bigAlerts] = await Promise.all([
       fetch('/api/stats').then(r => r.json()),
       fetch('/api/heatmap').then(r => r.json()),
       fetch('/api/positions').then(r => r.json()),
@@ -105,7 +105,8 @@ async function fetchInitialData() {
       fetch('/api/prices').then(r => r.json()),
       fetch('/api/digest-stats').then(r => r.json()),
       fetch('/api/hyperlens-data').then(r => r.json()).catch(() => ({})),
-      fetch('/api/enhanced-alerts').then(r => r.json()).catch(() => [])
+      fetch('/api/enhanced-alerts').then(r => r.json()).catch(() => []),
+      fetch('/api/alerts/big?limit=20').then(r => r.json()).catch(() => [])
     ]);
     
     state.stats = stats;
@@ -126,6 +127,7 @@ async function fetchInitialData() {
     renderDiscoveryStats();
     renderDigestStats();
     populateAssetSelect();
+    renderBigAlerts(bigAlerts);
     renderHyperlensInsights();
   } catch (error) {
     console.error('Error fetching initial data:', error);
@@ -735,6 +737,21 @@ function renderAlerts() {
   }).join('');
   
   container.innerHTML = html;
+}
+
+function renderBigAlerts(rows = []) {
+  const container = document.getElementById('bigAlertsContainer');
+  if (!container) return;
+  if (!rows || rows.length === 0) {
+    container.innerHTML = '<div class="empty-state">No big alerts yet</div>';
+    return;
+  }
+  container.innerHTML = rows.map(a => {
+    const time = new Date(a.created_at).toLocaleTimeString();
+    const amt = a.notional ? `$${(a.notional).toLocaleString()}` : '';
+    const type = a.type.replace(/_/g, ' ');
+    return `<div class=\"alert-card\"><div class=\"alert-header\"><div class=\"alert-title-section\"><span class=\"alert-icon\">🚨</span><span class=\"alert-title\">${type}</span></div><span class=\"alert-time\">${time}</span></div><div class=\"alert-details\">${a.asset ? `<div>${a.asset}</div>` : ''}${amt ? `<div>${amt}</div>` : ''}</div></div>`;
+  }).join('');
 }
 
 // Helper function to format large numbers

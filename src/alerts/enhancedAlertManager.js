@@ -1,5 +1,6 @@
 import { AlertManager } from './alertManager.js';
 import { HyperlensAPI } from '../api/hyperlens.js';
+import { SUMMARY_BASE_URL } from '../config.js';
 import { EnhancedWhaleTracker } from '../trackers/enhancedWhaleTracker.js';
 
 export class EnhancedAlertManager extends AlertManager {
@@ -411,7 +412,7 @@ ${side} ${position.asset}
     
     if (address) {
       const wallet = `${address.slice(0, 6)}...${address.slice(-4)}`;
-      const url = `https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
+      const url = `${SUMMARY_BASE_URL}/summary/${address}`;
       msg += `\n\n👤 <a href="${url}">${wallet}</a>`;
     }
     

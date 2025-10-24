@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { LiquidationMonitor } from './monitor.js';
 import telegramWebhook from './telegramWebhook.js';
+import { AlertsRepo } from './db/repositories/alerts.js';
+import { getDb } from './db/client.js';
 
 dotenv.config();
 
@@ -116,6 +118,46 @@ app.get('/api/alerts', (req, res) => {
   const limit = parseInt(req.query.limit) || 100;
   const alerts = monitor.alertManager.getAlertHistory(limit);
   res.json(alerts);
+});
+
+/**
+ * Get recent BIG alerts for WebApp
+ */
+app.get('/api/alerts/big', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const rows = AlertsRepo.recentBig(limit);
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Get top traders list (addresses only)
+ */
+app.get('/api/top-traders', (req, res) => {
+  try {
+    const db = getDb();
+    const rows = db.prepare('SELECT address, rank, pnl, roi, account_value, last_refreshed FROM top_traders ORDER BY COALESCE(rank, 999999)').all();
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Follow-up alerts feed (e.g., position closes, liquidations, reductions)
+ */
+app.get('/api/followups', (req, res) => {
+  try {
+    const since = req.query.since ? parseInt(req.query.since) : null;
+    const limit = parseInt(req.query.limit) || 50;
+    const rows = AlertsRepo.recentByTypes(['TOP_TRADER_REDUCTION', 'LIQUIDATION', 'WHALE_CLOSE'], { since, limit });
+    res.json(rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 /**

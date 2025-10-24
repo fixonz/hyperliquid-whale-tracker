@@ -7,6 +7,11 @@ import { LiquidationAnalyzer } from './analyzers/liquidationAnalyzer.js';
 import { HeatmapGenerator } from './analyzers/heatmapGenerator.js';
 import { AlertManager } from './alerts/alertManager.js';
 import { DigestManager } from './alerts/digestManager.js';
+import { PositionsRepo } from './db/repositories/positions.js';
+import { WhalesRepo } from './db/repositories/whales.js';
+import { AlertsRepo } from './db/repositories/alerts.js';
+import { EventsRepo } from './db/repositories/events.js';
+import { TopTradersService } from './services/topTraders.js';
 
 dotenv.config();
 
@@ -24,6 +29,9 @@ class LiquidationMonitor {
     
     // Enable digest mode (7-minute summaries)
     this.digestManager = new DigestManager(this.alertManager, 7);
+
+    // Persistence helpers
+    this.topTraders = new TopTradersService();
 
     this.knownAddresses = new Set();
     this.currentPrices = {};
@@ -92,6 +100,22 @@ class LiquidationMonitor {
     console.log(chalk.green(`✓ Poll interval: ${this.pollInterval}ms`));
     console.log(chalk.green(`✓ Whale threshold: $${this.whaleThreshold.toLocaleString()}`));
     console.log(chalk.green(`✓ Min position size: $${this.alertManager.config.minPositionSize.toLocaleString()}\n`));
+
+    // Initial top-traders refresh (fallback to existing script if available)
+    try {
+      await this.topTraders.refresh(async () => {
+        try {
+          const { default: leaderboard } = await import('../scripts/fetch-leaderboard-whales.js');
+          // If script exports data function; otherwise, fall back to empty
+          return Array.isArray(leaderboard) ? leaderboard : [];
+        } catch {
+          return [];
+        }
+      });
+      console.log(chalk.green(`✓ Top traders cached: ${this.topTraders.cache.size}`));
+    } catch (e) {
+      console.log(chalk.yellow(`⚠️ Top traders refresh failed: ${e.message}`));
+    }
   }
 
   /**
@@ -628,11 +652,30 @@ class LiquidationMonitor {
                   
                   // Track the position
                   const result = this.whaleTracker.trackPosition(whalePosition);
+
+                  // Persist current snapshot and whale
+                  PositionsRepo.upsert(whalePosition);
+                  WhalesRepo.upsert({ address, last_updated: Date.now() });
                   
                   // Add to digest for new positions
                   if (result.isNew && whalePosition.positionValue >= this.whaleThreshold) {
                     const whale = this.whaleTracker.getWhale(address);
                     this.digestManager.addWhaleOpen(whalePosition, whale);
+                  }
+
+                  // Detect reductions for top traders (≥$500k notional and ≥10% drop)
+                  const prev = PositionsRepo.getLatest(address, position.coin);
+                  if (prev && Math.abs(prev.size) > 0) {
+                    const fromSize = Math.abs(prev.size);
+                    const toSize = Math.abs(whalePosition.size);
+                    if (toSize < fromSize) {
+                      const changePct = (fromSize - toSize) / fromSize * 100;
+                      const notionalNow = whalePosition.positionValue;
+                      const isTop = this.topTraders.isTopTrader(address);
+                      if (isTop && notionalNow >= 500000 && changePct >= 10) {
+                        await this.sendTopTraderReductionAlert(prev, whalePosition, changePct);
+                      }
+                    }
                   }
                   
                   allPositions.push(whalePosition);
@@ -738,6 +781,24 @@ class LiquidationMonitor {
             
             // Remove from tracker
             this.whaleTracker.positions.delete(positionId);
+          } else {
+            // Consider this a manual close (take-profit/stop) follow-up
+            const alert = {
+              type: 'WHALE_CLOSE',
+              timestamp: Date.now(),
+              address: position.address,
+              asset: position.asset,
+              side: position.side,
+              notionalValue: position.positionValue,
+              entryPrice: position.entryPrice,
+              message: `Position closed: ${position.asset} ${position.side} $${this.formatNumber(position.positionValue)}`
+            };
+            await this.alertManager.sendAlert(alert, false);
+            try {
+              AlertsRepo.insert({ ...alert, created_at: alert.timestamp });
+            } catch {}
+            // Remove from tracker
+            this.whaleTracker.positions.delete(positionId);
           }
         }
       }
@@ -809,8 +870,27 @@ class LiquidationMonitor {
 
     // Send grouped hot position alerts if we have any
     if (Object.keys(hotPositionsByToken).length > 0) {
-      await this.alertManager.sendGroupedHotPositionAlerts(hotPositionsByToken);
-      console.log(chalk.yellow.bold(`🔥 GROUPED HOT POSITION ALERTS SENT: ${Object.keys(hotPositionsByToken).length} tokens, ${hotPositions.length} total positions`));
+      // Gating: if too many HOT positions, send only top 3 token groups live, rest to digest
+      const tokens = Object.keys(hotPositionsByToken);
+      const ranked = tokens
+        .map(t => ({ token: t, total: hotPositionsByToken[t].reduce((s, p) => s + p.notionalValue, 0) }))
+        .sort((a, b) => b.total - a.total);
+      const topTokens = ranked.slice(0, 3).map(r => r.token);
+      const live = {};
+      const digestOnly = [];
+      for (const t of tokens) {
+        if (topTokens.includes(t)) live[t] = hotPositionsByToken[t];
+        else digestOnly.push(...hotPositionsByToken[t]);
+      }
+      if (Object.keys(live).length > 0) {
+        await this.alertManager.sendGroupedHotPositionAlerts(live);
+        console.log(chalk.yellow.bold(`🔥 GROUPED HOT POSITION ALERTS SENT (top): ${Object.keys(live).length} tokens`));
+      }
+      // Add remaining HOT positions to digest only
+      for (const pos of digestOnly) {
+        const whale = this.whaleTracker.getWhale(pos.address);
+        this.digestManager.addWhaleOpen(pos, whale);
+      }
     }
   }
 
@@ -903,6 +983,45 @@ class LiquidationMonitor {
     });
 
     this.stats.totalAlertsS++;
+  }
+
+  /**
+   * Send top-trader reduction alert
+   */
+  async sendTopTraderReductionAlert(prev, current, changePct) {
+    const sideText = current.side === 'LONG' ? 'long' : 'short';
+    const avgPrice = Number(current.entryPrice || 0).toLocaleString();
+    const notional = Math.abs(current.size * current.entryPrice);
+    const wallet = `${current.address.slice(0, 6)}...${current.address.slice(-4)}`;
+
+    const alert = {
+      type: 'TOP_TRADER_REDUCTION',
+      timestamp: Date.now(),
+      asset: current.asset,
+      side: current.side,
+      address: current.address,
+      notionalValue: notional,
+      message:
+        `🧭 A top trader by PnL on Hyperliquid just reduced their ${sideText} $${current.asset} position\n\n` +
+        `This user's current position is ${sideText} $${this.formatNumber(notional)} of $${current.asset} at an average price of $${avgPrice}.\n` +
+        `Change: -${changePct.toFixed(1)}%\n` +
+        `👤 ` + this.alertManager.formatTelegramLink(current.address, wallet)
+    };
+
+    await this.alertManager.sendAlert(alert, false);
+    const alertId = AlertsRepo.insert({ ...alert, created_at: alert.timestamp });
+    EventsRepo.insert({
+      event_type: 'reduce',
+      address: current.address,
+      asset: current.asset,
+      from_size: Math.abs(prev.size),
+      to_size: Math.abs(current.size),
+      change_abs: Math.abs(prev.size) - Math.abs(current.size),
+      change_pct: changePct,
+      notional: notional,
+      related_alert_id: alertId,
+      created_at: Date.now()
+    });
   }
 
   /**

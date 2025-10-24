@@ -185,8 +185,8 @@ body {
 .heatmap-bars {
   display: flex;
   align-items: flex-end;
-  height: 120px;
-  gap: 4px;
+  height: 110px;
+  gap: 3px;
   padding: 8px;
   background: linear-gradient(90deg, 
     rgba(255, 68, 68, 0.1) 0%, 
@@ -197,7 +197,7 @@ body {
 
 .heatmap-bar {
   flex: 1;
-  min-width: 8px;
+  min-width: 6px;
   border-radius: 4px 4px 0 0;
   transition: transform 0.2s ease;
 }

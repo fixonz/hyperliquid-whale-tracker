@@ -1,5 +1,6 @@
 import axios from 'axios';
 import chalk from 'chalk';
+import { SUMMARY_BASE_URL } from '../config.js';
 import { CopyTradingDetector } from '../analyzers/copyTradingDetector.js';
 
 export class AlertManager {
@@ -37,7 +38,8 @@ export class AlertManager {
    * Format clickable link for Telegram (HTML anchor tags)
    */
   formatTelegramLink(address, displayText) {
-    const url = `https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
+    const url = `${SUMMARY_BASE_URL}/summary/${address}`;
+    // Ensure proper HTML formatting
     return `<a href="${url}">${displayText}</a>`;
   }
 
@@ -45,7 +47,7 @@ export class AlertManager {
    * Format simple link for Telegram (fallback method)
    */
   formatSimpleLink(address, displayText) {
-    const url = `https://hyperliquid-whale-tracker.onrender.com/summary/${address}`;
+    const url = `${SUMMARY_BASE_URL}/summary/${address}`;
     return `${displayText}\n🔗 ${url}`;
   }
 
@@ -136,10 +138,10 @@ export class AlertManager {
       const hyperlens = new HyperlensAPI();
       
       // Get address stats summary
-      const stats = await hyperlens.getAddressStatsSummary({
-        address: position.address,
-        days: 7 // Last 7 days
-      });
+      const stats = await hyperlens.getAddressStatsSummary(
+        position.address,
+        { days: 7 }
+      );
       
       if (stats && stats.length > 0) {
         const latestStats = stats[0]; // Most recent day
@@ -268,10 +270,10 @@ export class AlertManager {
       const hyperlens = new HyperlensAPI();
       
       // Get address stats summary
-      const stats = await hyperlens.getAddressStatsSummary({
-        address: position.address,
-        days: 7 // Last 7 days
-      });
+      const stats = await hyperlens.getAddressStatsSummary(
+        position.address,
+        { days: 7 }
+      );
       
       if (stats && stats.length > 0) {
         const latestStats = stats[0]; // Most recent day
@@ -722,7 +724,8 @@ export class AlertManager {
       if (alert.distancePercent) msg += `Distance: ${Number(alert.distancePercent || 0).toFixed(2)}%\n`;
       if (alert.address) {
         const cleanAddress = (alert.address || '').replace(/[<>&]/g, '');
-        msg += `\nWallet: <code>${cleanAddress.slice(0, 8)}...${cleanAddress.slice(-6)}</code>\n`;
+        const wallet = `${cleanAddress.slice(0, 6)}...${cleanAddress.slice(-4)}`;
+        msg += `\nWallet: ${this.formatTelegramLink(cleanAddress, wallet)}\n`;
       }
       if (alert.message) msg += `\n${(alert.message || '').replace(/[<>&]/g, '')}`;
 
@@ -758,7 +761,8 @@ export class AlertManager {
       'NEW_WHALE_DISCOVERED': '🐋 New Whale Discovered',
       'NEW_WALLET_DISCOVERED': '💼 New Wallet Discovered',
       'LARGE_POSITION': '💰 Large Position Detected',
-      'CLUSTER_ALERT': '🔥 Liquidation Cluster Alert'
+      'CLUSTER_ALERT': '🔥 Liquidation Cluster Alert',
+      'TOP_TRADER_REDUCTION': '🧭 Top Trader Reduction'
     };
     return titles[alert.type] || 'Alert';
   }
