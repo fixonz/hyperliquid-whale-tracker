@@ -881,11 +881,11 @@ class LiquidationMonitor {
             this.whaleTracker.positions.delete(positionId);
             try { PositionsRepo.delete(position.address, position.asset); } catch {}
           } else {
-            // Manual close - add to batch
+            // Manual close - add to batch with liquidated flag
             if (!closedByAddress.has(position.address)) {
               closedByAddress.set(position.address, []);
             }
-            closedByAddress.get(position.address).push({ position, currentPrice });
+            closedByAddress.get(position.address).push({ position, currentPrice, isLiquidated: false });
             
             // Remove from tracker and DB
             this.whaleTracker.positions.delete(positionId);
@@ -966,6 +966,7 @@ class LiquidationMonitor {
       notionalValue: closedPositions.reduce((sum, { position }) => sum + position.positionValue, 0),
       pnl: totalPnL,
       isWin: totalIsWin,
+      isLiquidated: false, // Manual close
       message: message
     };
     

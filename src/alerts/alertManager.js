@@ -774,15 +774,17 @@ export class AlertManager {
       // Special formatting for WHALE_CLOSE with color based on win/loss
       if (alert.type === 'WHALE_CLOSE') {
         const isWin = alert.isWin !== undefined ? alert.isWin : alert.pnl > 0;
-        const colorEmoji = isWin ? '✅' : '❌';
-        const colorCode = isWin ? '#00ff41' : '#ff4444';
+        const isLiquidated = alert.isLiquidated || false;
+        const colorEmoji = isLiquidated ? '🔴' : (isWin ? '✅' : '❌');
+        const colorCode = isLiquidated ? '#ff4444' : (isWin ? '#00ff41' : '#ff4444');
+        const title = isLiquidated ? 'LIQUIDATED' : 'Position Closed';
         
-        let msg = `<b style="color: ${colorCode}">${colorEmoji} Position Closed</b>\n\n`;
+        let msg = `<b style="color: ${colorCode}">${colorEmoji} ${title}</b>\n\n`;
         msg += `Asset: <b>${(alert.asset || '').replace(/[<>&]/g, '')}</b>\n`;
         msg += `Side: <b>${(alert.side || '').replace(/[<>&]/g, '')}</b>\n`;
         if (alert.notionalValue) msg += `Notional: <b>$${Number(alert.notionalValue || 0).toLocaleString()}</b>\n`;
         if (alert.entryPrice) msg += `Entry: $${Number(alert.entryPrice || 0).toFixed(2)}\n`;
-        if (alert.pnl !== undefined) {
+        if (alert.pnl !== undefined && !isLiquidated) {
           const pnlSign = alert.pnl > 0 ? '+' : '';
           msg += `PnL: <b style="color: ${colorCode}">${pnlSign}$${Number(Math.abs(alert.pnl)).toLocaleString()}</b>\n`;
         }
