@@ -772,6 +772,12 @@ export class AlertManager {
    * Get alert title based on type
    */
   getAlertTitle(alert) {
+    // Special case for WHALE_CLOSE - show win/loss
+    if (alert.type === 'WHALE_CLOSE') {
+      const isWin = alert.isWin !== undefined ? alert.isWin : alert.pnl > 0;
+      return isWin ? '💰 Position Closed (WIN)' : '💸 Position Closed (LOSS)';
+    }
+    
     const titles = {
       'WHALE_OPEN': '🐋 Whale Position Opened',
       'WHALE_CLOSE': '🐋 Whale Position Closed',

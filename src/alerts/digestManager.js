@@ -221,6 +221,72 @@ export class DigestManager {
     // Send to alert channels
     await this.sendTelegramDigest();
     await this.sendDiscordDigest();
+    
+    // If this is an hourly digest (60 minutes), send simplified version
+    if (this.intervalMs === 60 * 60 * 1000) {
+      await this.sendHourlyDigest();
+    }
+  }
+  
+  /**
+   * Send simplified hourly digest grouped by address
+   */
+  async sendHourlyDigest() {
+    const allPositions = [...this.digest.newLongs, ...this.digest.newShorts];
+    
+    if (allPositions.length === 0) {
+      return;
+    }
+    
+    // Group by address
+    const byAddress = new Map();
+    for (const pos of allPositions) {
+      if (!byAddress.has(pos.address)) {
+        byAddress.set(pos.address, []);
+      }
+      byAddress.get(pos.address).push(pos);
+    }
+    
+    // Calculate totals
+    const totalVolume = this.digest.stats.totalLongValue + this.digest.stats.totalShortValue;
+    const totalLongs = this.digest.stats.totalLongsOpened;
+    const totalShorts = this.digest.stats.totalShortsOpened;
+    
+    // Build message
+    let message = `⏰ HOURLY DIGEST\n\n`;
+    message += `📊 ${totalLongs} Longs • ${totalShorts} Shorts\n`;
+    message += `💰 Total Volume: $${this.formatLargeNumber(totalVolume)}\n\n`;
+    
+    // Group by address and show positions
+    const sortedByVolume = Array.from(byAddress.entries())
+      .sort((a, b) => {
+        const totalA = a[1].reduce((sum, p) => sum + p.notional, 0);
+        const totalB = b[1].reduce((sum, p) => sum + p.notional, 0);
+        return totalB - totalA;
+      });
+    
+    for (const [address, positions] of sortedByVolume) {
+      const addressTotal = positions.reduce((sum, p) => sum + p.notional, 0);
+      const walletShort = `${address.slice(0, 6)}...${address.slice(-4)}`;
+      
+      message += `${this.formatTelegramLink(address, walletShort)}\n`;
+      
+      for (const pos of positions) {
+        const sideEmoji = pos.side === 'LONG' ? '🟢' : '🔴';
+        message += `  ${sideEmoji} ${pos.asset} ${pos.side}: $${this.formatLargeNumber(pos.notional)} ${pos.leverage.toFixed(1)}x\n`;
+      }
+      
+      message += `  💰 Wallet Total: $${this.formatLargeNumber(addressTotal)}\n\n`;
+    }
+    
+    // Send as alert
+    const alert = {
+      type: 'HOURLY_DIGEST',
+      timestamp: Date.now(),
+      message: message
+    };
+    
+    await this.alertManager.sendAlert(alert, false);
   }
 
   /**
@@ -498,8 +564,12 @@ export class DigestManager {
     
     // Get closest to liquidation positions
     const closestToLiq = this.digest.liquidationRisks
-      .sort((a, b) => a.percentFromLiquidation - b.percentFromLiquidation)
-      .slice(0, 5);
+      .sort((a, b) => (a.distancePercent || a.percentFromLiquidation || 999) - (b.distancePercent || b.percentFromLiquidation || 999))
+      .slice(0, 5)
+      .map(risk => ({
+        ...risk,
+        percentFromLiquidation: risk.distancePercent || risk.percentFromLiquidation || 999
+      }));
     
     // Get top positions (deduplicated by address+asset combination)
     const allPositions = [...this.digest.newLongs, ...this.digest.newShorts];
@@ -518,13 +588,13 @@ export class DigestManager {
       .sort((a, b) => b.notional - a.notional)
       .slice(0, 5);
     
-    // Debug logging for troubleshooting
-    console.log(`📊 Digest Stats: ${longsCount} longs, ${shortsCount} shorts, ${topPositions.length} top positions`);
-    if (topPositions.length > 0) {
-      console.log('🔥 Top positions:', topPositions.map(p => 
-        `${p.asset} ${p.side} $${Math.round(p.notional)} (${p.address.slice(0, 6)}...)`
-      ));
-    }
+    // Debug logging for troubleshooting (commented out to reduce noise)
+    // console.log(`📊 Digest Stats: ${longsCount} longs, ${shortsCount} shorts, ${topPositions.length} top positions`);
+    // if (topPositions.length > 0) {
+    //   console.log('🔥 Top positions:', topPositions.map(p => 
+    //     `${p.asset} ${p.side} $${Math.round(p.notional)} (${p.address.slice(0, 6)}...)`
+    //   ));
+    // }
     
     return {
       volume,

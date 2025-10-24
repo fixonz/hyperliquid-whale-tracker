@@ -284,7 +284,7 @@ export class WhaleTracker {
    * Get top whales (by total PnL, including negative)
    */
   getTopWhales(count = 20) {
-    console.log(`🔍 getTopWhales called: ${this.whales.size} whales in memory`);
+    // console.log(`🔍 getTopWhales called: ${this.whales.size} whales in memory`);
     
     if (this.whales.size === 0) {
       console.log('⚠️ No whales in memory - returning empty array');

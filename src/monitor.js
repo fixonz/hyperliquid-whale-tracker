@@ -29,8 +29,9 @@ class LiquidationMonitor {
       enableConsole: true  // Enable console alerts for real-time notifications
     });
     
-    // Enable digest mode (7-minute summaries)
+    // Enable digest mode (7-minute summaries + hourly digest)
     this.digestManager = new DigestManager(this.alertManager, 7);
+    this.hourlyDigestManager = new DigestManager(this.alertManager, 60);
 
     // Persistence helpers
     this.topTraders = new TopTradersService();
@@ -580,6 +581,7 @@ class LiquidationMonitor {
     
     // Start digest mode
     this.digestManager.start();
+    this.hourlyDigestManager.start();
     
     // Send a test liquidation alert after 30 seconds to verify system works
     setTimeout(() => {
@@ -753,6 +755,7 @@ class LiquidationMonitor {
                   if (result.isNew && whalePosition.positionValue >= this.whaleThreshold) {
                     const whale = this.whaleTracker.getWhale(address);
                     this.digestManager.addWhaleOpen(whalePosition, whale);
+                    this.hourlyDigestManager.addWhaleOpen(whalePosition, whale);
                   }
 
                   // Detect reductions for top traders (≥$500k notional and ≥10% drop)
@@ -851,6 +854,9 @@ class LiquidationMonitor {
   async detectLiquidations(currentPositionIds) {
     const allTrackedPositions = this.whaleTracker.getAllPositions();
     
+    // Group closed positions by address for batch alerts
+    const closedByAddress = new Map();
+    
     for (const position of allTrackedPositions) {
       const positionId = `${position.address}_${position.asset}`;
       
@@ -875,18 +881,12 @@ class LiquidationMonitor {
             this.whaleTracker.positions.delete(positionId);
             try { PositionsRepo.delete(position.address, position.asset); } catch {}
           } else {
-            // Consider this a manual close (take-profit/stop) follow-up
-            const alert = {
-              type: 'WHALE_CLOSE',
-              timestamp: Date.now(),
-              address: position.address,
-              asset: position.asset,
-              side: position.side,
-              notionalValue: position.positionValue,
-              entryPrice: position.entryPrice,
-              message: `Position closed: ${position.asset} ${position.side} $${this.formatNumber(position.positionValue)}`
-            };
-            await this.alertManager.sendAlert(alert, false);
+            // Manual close - add to batch
+            if (!closedByAddress.has(position.address)) {
+              closedByAddress.set(position.address, []);
+            }
+            closedByAddress.get(position.address).push({ position, currentPrice });
+            
             // Remove from tracker and DB
             this.whaleTracker.positions.delete(positionId);
             try { PositionsRepo.delete(position.address, position.asset); } catch {}
@@ -894,6 +894,73 @@ class LiquidationMonitor {
         }
       }
     }
+    
+    // Send batch alerts for each address
+    for (const [address, closedPositions] of closedByAddress) {
+      await this.sendBatchCloseAlert(address, closedPositions);
+    }
+  }
+  
+  /**
+   * Send alert for multiple positions closed by same address
+   */
+  async sendBatchCloseAlert(address, closedPositions) {
+    if (closedPositions.length === 0) return;
+    
+    // Process each position
+    const positions = closedPositions.map(({ position, currentPrice }) => {
+      const pnl = position.unrealizedPnl || 0;
+      const isWin = pnl > 0;
+      const pnlSign = isWin ? '+' : '';
+      const pnlFormatted = `$${this.formatNumber(Math.abs(pnl))}`;
+      
+      return {
+        asset: position.asset,
+        side: position.side,
+        entryPrice: position.entryPrice,
+        exitPrice: currentPrice,
+        pnl,
+        pnlFormatted,
+        pnlSign,
+        isWin,
+        message: `${position.asset} ${position.side}: ${isWin ? '✅' : '❌'} ${pnlSign}${pnlFormatted}`
+      };
+    });
+    
+    // Calculate cumulative PnL
+    const totalPnL = positions.reduce((sum, p) => sum + p.pnl, 0);
+    const totalIsWin = totalPnL > 0;
+    const totalSign = totalIsWin ? '+' : '';
+    const totalFormatted = `$${this.formatNumber(Math.abs(totalPnL))}`;
+    
+    // Build message
+    let message = closedPositions.length === 1 
+      ? `🎯 Position Closed: ${positions[0].asset} ${positions[0].side}\n`
+      : `🎯 ${closedPositions.length} Positions Closed\n`;
+    
+    // Add each position
+    for (const pos of positions) {
+      message += `${pos.message}\n`;
+    }
+    
+    // Add cumulative total if multiple positions
+    if (closedPositions.length > 1) {
+      message += `\n💰 TOTAL: ${totalIsWin ? '✅ WON' : '❌ LOST'} ${totalSign}${totalFormatted}`;
+    }
+    
+    const alert = {
+      type: 'WHALE_CLOSE',
+      timestamp: Date.now(),
+      address: address,
+      asset: positions.length === 1 ? positions[0].asset : 'MULTIPLE',
+      side: positions.length === 1 ? positions[0].side : null,
+      notionalValue: closedPositions.reduce((sum, { position }) => sum + position.positionValue, 0),
+      pnl: totalPnL,
+      isWin: totalIsWin,
+      message: message
+    };
+    
+    await this.alertManager.sendAlert(alert, false);
   }
 
   /**
