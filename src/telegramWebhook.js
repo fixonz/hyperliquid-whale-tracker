@@ -3,6 +3,11 @@ import axios from 'axios';
 
 const router = express.Router();
 
+// Get webapp URL from environment or use default
+const getWebAppUrl = () => {
+  return process.env.RENDER_EXTERNAL_URL || process.env.VERCEL_URL || 'https://hyperliquid-whale-tracker.onrender.com';
+};
+
 // Telegram bot commands
 router.post('/telegram-webhook', async (req, res) => {
   try {
@@ -51,7 +56,7 @@ router.post('/telegram-webhook', async (req, res) => {
 });
 
 async function sendWelcomeMessage(chatId, botToken) {
-  const webAppUrl = 'https://hyperliquid-whale-tracker.onrender.com';
+  const webAppUrl = getWebAppUrl();
   
   const message = `🐋 <b>Welcome to Hyperliquid Whale Tracker!</b>
 
@@ -92,7 +97,7 @@ Click the button below to start tracking!`;
 }
 
 async function sendDashboardLink(chatId, botToken) {
-  const webAppUrl = 'https://hyperliquid-whale-tracker.onrender.com';
+  const webAppUrl = getWebAppUrl();
 
   const message = `🐋 <b>Open Whale Tracker Dashboard</b>
 
@@ -166,9 +171,9 @@ async function sendStatusMessage(chatId, botToken) {
 <b>🚀 Quick Actions:</b>
 Click below to open the dashboard and start tracking!`;
 
-  const webAppUrl = 'https://hyperliquid-whale-tracker.onrender.com';
+  const webAppUrl = getWebAppUrl();
     
-  const keyboard = {
+    const keyboard = {
     inline_keyboard: [
       [{
         text: '🚀 Open Dashboard',
