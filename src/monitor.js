@@ -933,10 +933,19 @@ class LiquidationMonitor {
     const totalSign = totalIsWin ? '+' : '';
     const totalFormatted = `$${this.formatNumber(Math.abs(totalPnL))}`;
     
+    const timestamp = new Date().toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    
     // Build message
     let message = closedPositions.length === 1 
       ? `🎯 Position Closed: ${positions[0].asset} ${positions[0].side}\n`
       : `🎯 ${closedPositions.length} Positions Closed\n`;
+    message += `⏰ ${timestamp}\n\n`;
     
     // Add each position
     for (const pos of positions) {

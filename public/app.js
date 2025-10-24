@@ -136,16 +136,35 @@ async function fetchInitialData() {
 
 // Update stats display
 function updateStats() {
-  document.getElementById('whalesTracked').textContent = state.stats.whalesTracked || 0;
-  document.getElementById('positionsCount').textContent = state.stats.positionsMonitored || 0;
-  document.getElementById('newAddresses').textContent = state.stats?.discoveryStats?.totalAdded || 0;
-  document.getElementById('totalScans').textContent = state.stats.totalScans || 0;
-  document.getElementById('totalLiquidations').textContent = state.stats.totalLiquidations || 0;
-  // Prefer 7-min digest liquidation volume if available; fallback to running stat
-  const liqVol = (state.digestStats && typeof state.digestStats.totalLiquidatedValue === 'number')
-    ? state.digestStats.totalLiquidatedValue
-    : (state.stats.liquidationVolume || 0);
-  document.getElementById('liquidationVolume').textContent = `$${formatLargeNumber(liqVol)}`;
+  // Helper to show value or loading state
+  const showValue = (elementId, value, prefix = '') => {
+    const el = document.getElementById(elementId);
+    if (el) {
+      if (value === undefined || value === null) {
+        el.textContent = 'Scanning...';
+      } else {
+        el.textContent = prefix + (value > 0 ? value : 0);
+      }
+    }
+  };
+  
+  // Check if we have scanned at least once (totalScans > 0 means real data)
+  const hasData = state.stats.totalScans > 0;
+  
+  if (hasData) {
+    showValue('whalesTracked', state.stats.whalesTracked);
+    showValue('positionsCount', state.stats.positionsMonitored);
+    showValue('newAddresses', state.stats?.discoveryStats?.totalAdded);
+    showValue('totalScans', state.stats.totalScans);
+    showValue('totalLiquidations', state.stats.totalLiquidations);
+    
+    // Liquidation volume
+    const liqVol = (state.digestStats && typeof state.digestStats.totalLiquidatedValue === 'number')
+      ? state.digestStats.totalLiquidatedValue
+      : (state.stats.liquidationVolume || 0);
+    showValue('liquidationVolume', liqVol, '$');
+  }
+  // Otherwise keep "Scanning..." from HTML initial state
 }
 
 function updateStatus(text, type) {
@@ -942,8 +961,26 @@ function renderDiscoveryStats() {
     
     // Update stats
     if (stats.lastDiscovery) {
-      const lastTime = new Date(stats.lastDiscovery).toLocaleTimeString();
-      lastDiscoveryEl.textContent = lastTime;
+      const lastTime = new Date(stats.lastDiscovery);
+      const now = new Date();
+      const diffMs = now - lastTime;
+      const diffMins = Math.floor(diffMs / 60000);
+      
+      let timeText;
+      if (diffMins < 1) {
+        timeText = 'Just now';
+      } else if (diffMins < 60) {
+        timeText = `${diffMins}m ago`;
+      } else if (diffMins < 1440) {
+        const hours = Math.floor(diffMins / 60);
+        timeText = `${hours}h ago`;
+      } else {
+        timeText = lastTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+      
+      lastDiscoveryEl.textContent = timeText;
+    } else {
+      lastDiscoveryEl.textContent = 'Never';
     }
     
     addressesFoundEl.textContent = stats.totalFound || 0;

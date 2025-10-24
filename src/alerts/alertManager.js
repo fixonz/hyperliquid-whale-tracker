@@ -72,9 +72,18 @@ export class AlertManager {
       const longPositions = positions.filter(p => p.side === 'LONG');
       const shortPositions = positions.filter(p => p.side === 'SHORT');
       
+      const timestamp = new Date().toLocaleString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+      
       let message = `🚨 MAJOR ${token} POSITIONS\n\n`;
       message += `💰 Total Volume: $${this.formatLargeNumber(totalNotional)}\n`;
-      message += `📊 Positions: ${positions.length} (${longPositions.length}L/${shortPositions.length}S)\n\n`;
+      message += `📊 Positions: ${positions.length} (${longPositions.length}L/${shortPositions.length}S)\n`;
+      message += `⏰ ${timestamp}\n\n`;
       
       // Add each position with PnL and liquidation info
       for (let i = 0; i < positions.length; i++) {
@@ -161,6 +170,14 @@ export class AlertManager {
       console.log('Could not fetch wallet stats:', error.message);
     }
     
+    const timestamp = new Date().toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    
     const alert = {
       type: 'BIG_POSITION',
       timestamp: Date.now(),
@@ -176,6 +193,7 @@ export class AlertManager {
                `💵 Size: $${this.formatLargeNumber(notional)}\n` +
                `📊 Entry: $${Number(position.entryPrice || 0).toLocaleString()}\n` +
                `⚡ Leverage: ${Number(position.leverage || 0).toFixed(1)}x\n` +
+               `⏰ ${timestamp}\n` +
                `👤 Wallet: ` + this.formatTelegramLink(position.address, wallet) + `\n` +
                `${whale?.roi ? `📈 ROI: ${Number(whale.roi).toFixed(1)}%` : ''}` +
                walletStats
@@ -290,6 +308,14 @@ export class AlertManager {
       console.log('Could not fetch wallet stats for HOT alert:', error.message);
     }
     
+    const timestamp = new Date().toLocaleString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    
     const alert = {
       type: 'HOT_POSITION',
       timestamp: Date.now(),
@@ -304,6 +330,7 @@ export class AlertManager {
                `💰 ${position.asset} ${position.side}\n` +
                `💵 Size: $${this.formatLargeNumber(notional)}\n` +
                `⚡ Leverage: ${Number(position.leverage || 0).toFixed(1)}x\n` +
+               `⏰ ${timestamp}\n` +
                `👤 ` + this.formatTelegramLink(position.address, wallet) + `\n` +
                walletStats
     };
@@ -716,11 +743,20 @@ export class AlertManager {
         const asset = (alert.asset || 'UNKNOWN').replace(/[<>&]/g, '');
         const address = (alert.address || '').replace(/[<>&]/g, '');
         
+        const timestamp = new Date().toLocaleString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        });
+        
         const price = liquidationPrice || alert.entryPrice || 0;
         const isTest = alert.message && alert.message.includes('TEST');
         let msg = isTest ? `🧪 TEST LIQUIDATION ALERT\n` : '';
         msg += `${sideEmoji} #${asset} - ${sideText}\n`;
         msg += `Liquidated $${notionalFormatted} at $${Number(price).toLocaleString()}\n`;
+        msg += `⏰ ${timestamp}\n`;
         
         // Add copy trading information if detected
         if (alert.copyTradingInfo) {
