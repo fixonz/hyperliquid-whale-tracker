@@ -1089,16 +1089,42 @@ class LiquidationMonitor {
         }
       }
       
-      // Get recent liquidations from Hyperlens.io
+      // Get recent liquidations from Hyperlens.io and send immediate alerts
       const liquidations = await hyperlensAPI.getLatestLiquidations();
       if (liquidations && liquidations.length > 0) {
         for (const liq of liquidations.slice(0, 20)) { // Process top 20 liquidations
-          if (liq.user && liq.notional) {
+          if (liq.user && liq.notional && Math.abs(liq.notional) >= 50000) { // $50K+ threshold
+            const timestamp = new Date().toLocaleString('en-US', { 
+              month: 'short', 
+              day: 'numeric', 
+              hour: 'numeric', 
+              minute: '2-digit',
+              hour12: true 
+            });
+            
+            const sideEmoji = liq.side === 'B' ? '🟢' : '🔴';
+            const sideText = liq.side === 'B' ? 'Long' : 'Short';
+            const notional = Math.abs(liq.notional || 0);
+            const notionalFormatted = this.formatNumber(notional);
+            
+            // Send immediate liquidation alert
+            await this.alertManager.sendAlert({
+              type: 'LIQUIDATION',
+              timestamp: Date.now(),
+              address: liq.user,
+              asset: liq.coin || 'UNKNOWN',
+              side: sideText.toUpperCase(),
+              notionalValue: notional,
+              liquidationPrice: liq.px || 0,
+              message: `${sideEmoji} #${liq.coin || 'UNKNOWN'} Liquidated ${sideText}: $${notionalFormatted} at $${Number(liq.px || 0).toLocaleString()}\n⏰ ${timestamp}\n\n-- ` + this.alertManager.formatTelegramLink(liq.user, `${liq.user.slice(0, 6)}...${liq.user.slice(-4)}`)
+            });
+            
+            // Also add to digest
             this.digestManager.addLiquidation({
               address: liq.user,
               asset: liq.coin || 'UNKNOWN',
               side: liq.side === 'B' ? 'LONG' : 'SHORT',
-              notionalValue: Math.abs(liq.notional || 0),
+              notionalValue: notional,
               leverage: 1,
               timestamp: liq.time || Date.now()
             });
