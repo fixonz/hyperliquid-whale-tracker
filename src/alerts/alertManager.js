@@ -2,6 +2,7 @@ import axios from 'axios';
 import chalk from 'chalk';
 import { SUMMARY_BASE_URL } from '../config.js';
 import { CopyTradingDetector } from '../analyzers/copyTradingDetector.js';
+import { AlertsRepo } from '../db/repositories/alerts.js';
 
 export class AlertManager {
   constructor(config = {}) {
@@ -396,6 +397,7 @@ export class AlertManager {
 
     const alertKey = this.getAlertKey(alert);
     const now = Date.now();
+    const createdAt = alert.timestamp || now;
     
     // Mark as sent and set cooldowns
     this.recentAlerts.add(alertKey);
@@ -439,6 +441,24 @@ export class AlertManager {
     }
 
     await Promise.allSettled(promises);
+
+    // Persist alert to DB for history/metrics (best-effort)
+    try {
+      const formattedMessage = this.formatTelegramMessage(alert) || alert.message || '';
+      AlertsRepo.insert({
+        type: alert.type,
+        address: alert.address,
+        asset: alert.asset,
+        side: alert.side,
+        notional: alert.notionalValue || alert.notional,
+        message: formattedMessage,
+        pinned: shouldPin ? 1 : 0,
+        created_at: createdAt
+      });
+    } catch (e) {
+      // Do not throw from persistence
+      console.log('Alert persistence failed:', e.message);
+    }
   }
 
   /**

@@ -862,9 +862,6 @@ class LiquidationMonitor {
               message: `Position closed: ${position.asset} ${position.side} $${this.formatNumber(position.positionValue)}`
             };
             await this.alertManager.sendAlert(alert, false);
-            try {
-              AlertsRepo.insert({ ...alert, created_at: alert.timestamp });
-            } catch {}
             // Remove from tracker and DB
             this.whaleTracker.positions.delete(positionId);
             try { PositionsRepo.delete(position.address, position.asset); } catch {}
@@ -1164,6 +1161,9 @@ class LiquidationMonitor {
         lastActive: null
       });
       this.whaleTracker.saveWhaleData();
+      try {
+        WhalesRepo.upsert({ address, first_seen: Date.now(), last_updated: Date.now(), source: 'auto-discovery' });
+      } catch {}
     }
   }
 
