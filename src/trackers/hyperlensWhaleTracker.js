@@ -21,16 +21,27 @@ export class HyperlensWhaleTracker {
     try {
       console.log('🐋 Fetching real whales from Hyperlens.io...');
       
-      // Get global stats to understand the market
-      const globalStats = await this.api.getGlobalStats();
-      console.log('📊 Global stats:', globalStats);
+      // Try global stats (optional; API may require params)
+      try {
+        const globalStats = await this.api.getGlobalStats();
+        console.log('📊 Global stats:', globalStats);
+      } catch (e) {
+        console.log('📊 Global stats unavailable:', e?.response?.status || e.message);
+      }
       
-      // Get recent large fills to find active whales
-      const largeFills = await this.api.getFills({
-        limit: 100,
-        // Filter for large trades (over $100K)
-        minNotional: 100000
-      });
+      // Get recent large fills to find active whales (fetch per coin to satisfy API requirements)
+      const coins = ['BTC', 'ETH', 'SOL', 'ARB', 'OP', 'LINK', 'AVAX'];
+      let largeFills = [];
+      for (const coin of coins) {
+        try {
+          const fills = await this.api.getFills({ coin, limit: 200 });
+          if (Array.isArray(fills)) largeFills.push(...fills);
+          // Rate limit a bit
+          await new Promise(r => setTimeout(r, 100));
+        } catch (e) {
+          // ignore individual coin errors
+        }
+      }
       
       const whaleAddresses = new Set();
       const whaleData = new Map();
@@ -40,7 +51,8 @@ export class HyperlensWhaleTracker {
         console.log(`📈 Processing ${largeFills.length} large fills...`);
         
         for (const fill of largeFills) {
-          if (fill.user && fill.notional && Math.abs(fill.notional) >= 100000) {
+          const notional = typeof fill.notional === 'number' ? Math.abs(fill.notional) : Math.abs((fill.sz || fill.size || 0) * (fill.px || fill.price || 0));
+          if (fill.user && notional >= 100000) {
             whaleAddresses.add(fill.user);
             
             if (!whaleData.has(fill.user)) {
@@ -57,9 +69,9 @@ export class HyperlensWhaleTracker {
             }
             
             const whale = whaleData.get(fill.user);
-            whale.totalVolume += Math.abs(fill.notional);
+            whale.totalVolume += notional;
             whale.totalTrades++;
-            whale.largestTrade = Math.max(whale.largestTrade, Math.abs(fill.notional));
+            whale.largestTrade = Math.max(whale.largestTrade, notional);
             whale.assets.add(fill.coin);
             whale.lastActive = Math.max(whale.lastActive, fill.time || Date.now());
           }
@@ -81,10 +93,7 @@ export class HyperlensWhaleTracker {
       for (const address of whaleAddresses) {
         try {
           // Get 7-day stats for this address
-          const stats = await this.api.getAddressStats({
-            address: address,
-            days: 7
-          });
+          const stats = await this.api.getAddressStats(address, { days: 7 });
           
           if (stats && stats.length > 0) {
             const latestStats = stats[0]; // Most recent day

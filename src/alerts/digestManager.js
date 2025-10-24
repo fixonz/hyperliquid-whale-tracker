@@ -535,7 +535,8 @@ export class DigestManager {
       maxLeverage,
       atRiskCount,
       closestToLiq,
-      topPositions
+      topPositions,
+      totalLiquidatedValue: this.digest.stats.totalLiquidatedValue
     };
   }
 }

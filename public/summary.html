@@ -32,6 +32,7 @@
           margin-bottom: 30px;
           padding: 20px 0;
           border-bottom: 2px solid #00ff41;
+          position: relative;
         }
 
         .header h1 {
@@ -184,6 +185,27 @@
           text-decoration: underline;
         }
 
+        /* Back button */
+        .back-btn {
+          position: absolute;
+          left: 16px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: rgba(0, 255, 65, 0.08);
+          border: 1px solid rgba(0, 255, 65, 0.5);
+          color: #00ff41;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .back-btn:hover {
+          background: rgba(0, 255, 65, 0.15);
+          border-color: #00ff41;
+        }
+
         @media (max-width: 768px) {
           .container {
             padding: 10px;
@@ -209,12 +231,19 @@
           .stat-label {
             font-size: 12px;
           }
+
+          .back-btn {
+            left: 10px;
+            padding: 6px 10px;
+            font-size: 13px;
+          }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header class="header">
+            <button class="back-btn" onclick="goBack()">← Back</button>
             <h1>🚨 Hyperliquid Alert</h1>
         </header>
 
@@ -654,6 +683,18 @@
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
             });
+        }
+
+        // Back navigation
+        function goBack() {
+            try {
+                if (window.history && window.history.length > 1 && document.referrer) {
+                    window.history.back();
+                    return;
+                }
+            } catch {}
+            // Fallback to home
+            window.location.href = '/';
         }
     </script>
 </body>

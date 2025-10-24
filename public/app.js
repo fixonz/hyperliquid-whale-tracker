@@ -141,7 +141,11 @@ function updateStats() {
   document.getElementById('newAddresses').textContent = state.stats?.discoveryStats?.totalAdded || 0;
   document.getElementById('totalScans').textContent = state.stats.totalScans || 0;
   document.getElementById('totalLiquidations').textContent = state.stats.totalLiquidations || 0;
-  document.getElementById('liquidationVolume').textContent = `$${formatLargeNumber(state.stats.liquidationVolume || 0)}`;
+  // Prefer 7-min digest liquidation volume if available; fallback to running stat
+  const liqVol = (state.digestStats && typeof state.digestStats.totalLiquidatedValue === 'number')
+    ? state.digestStats.totalLiquidatedValue
+    : (state.stats.liquidationVolume || 0);
+  document.getElementById('liquidationVolume').textContent = `$${formatLargeNumber(liqVol)}`;
 }
 
 function updateStatus(text, type) {

@@ -86,6 +86,17 @@ class LiquidationMonitor {
     // Initialize HyperlensWhaleTracker with real data first
     await this.initializeHyperlensWhales();
 
+    // Fetch meta and update per-asset maintenance margins
+    try {
+      const meta = await this.api.getMeta();
+      if (meta) {
+        this.liquidationAnalyzer.updateMaintenanceFromMeta(meta);
+        console.log(chalk.gray('✓ Per-asset maintenance margins loaded from meta'));
+      }
+    } catch (e) {
+      console.log(chalk.yellow(`⚠️ Could not load meta for maintenance margins: ${e.message}`));
+    }
+
     // Load initial whale addresses from tracker
     const existingWhales = this.whaleTracker.getWhaleAddresses();
     existingWhales.forEach(addr => this.knownAddresses.add(addr));

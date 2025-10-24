@@ -1,6 +1,7 @@
 export class LiquidationAnalyzer {
   constructor() {
-    this.maintenanceMarginRatio = 0.03; // 3% maintenance margin (approximate)
+    this.maintenanceMarginRatio = 0.03; // default fallback
+    this.perAssetMaintenance = new Map(); // asset -> mmr fraction (0-1)
   }
 
   /**
@@ -22,7 +23,7 @@ export class LiquidationAnalyzer {
     // For longs: liqPrice = entryPrice * (1 - (1/leverage - maintenanceMargin))
     // For shorts: liqPrice = entryPrice * (1 + (1/leverage - maintenanceMargin))
     
-    const mmr = this.maintenanceMarginRatio;
+    const mmr = this.getMaintenanceMargin(position.asset, leverageValue);
     const liquidationPriceMultiplier = (1 / leverageValue) - mmr;
 
     let liquidationPrice;
@@ -73,6 +74,48 @@ export class LiquidationAnalyzer {
     }
 
     return analysis.sort((a, b) => a.distancePercent - b.distancePercent);
+  }
+
+  /**
+   * Update per-asset maintenance margin ratios from Hyperliquid meta
+   * Accepts a meta object and tries to extract mmr-like fields in [0,1]
+   */
+  updateMaintenanceFromMeta(meta) {
+    try {
+      if (!meta) return;
+      const universe = Array.isArray(meta.universe) ? meta.universe : [];
+      for (const m of universe) {
+        const name = m?.name || m?.coin || m?.asset || m?.symbol;
+        if (!name) continue;
+        let mmrVal = null;
+        // Try common field names
+        const candidates = [
+          m?.mmr,
+          m?.maintenanceMargin,
+          m?.maintenanceMarginFraction,
+          m?.maintenance_margin,
+          m?.risk?.maintenanceMargin,
+          m?.risk?.mmr
+        ];
+        for (const c of candidates) {
+          if (typeof c === 'number' && c > 0 && c < 1) { mmrVal = c; break; }
+        }
+        if (mmrVal === null) continue;
+        this.perAssetMaintenance.set(String(name).toUpperCase(), mmrVal);
+      }
+    } catch {}
+  }
+
+  /**
+   * Get maintenance margin ratio for an asset (fallback to default)
+   * Some venues scale mmr slightly with leverage; we keep it constant if unknown
+   */
+  getMaintenanceMargin(asset, leverageValue) {
+    if (asset) {
+      const key = String(asset).toUpperCase();
+      if (this.perAssetMaintenance.has(key)) return this.perAssetMaintenance.get(key);
+    }
+    return this.maintenanceMarginRatio;
   }
 
   /**
