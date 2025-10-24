@@ -754,8 +754,11 @@ export class AlertManager {
         const price = liquidationPrice || alert.entryPrice || 0;
         const isTest = alert.message && alert.message.includes('TEST');
         let msg = isTest ? `🧪 TEST LIQUIDATION ALERT\n` : '';
-        msg += `${sideEmoji} #${asset} - ${sideText}\n`;
-        msg += `Liquidated $${notionalFormatted} at $${Number(price).toLocaleString()}\n`;
+        msg += `<b style="color: #ff4444">🔴 LIQUIDATED</b>\n\n`;
+        msg += `Asset: <b>${asset}</b>\n`;
+        msg += `Side: <b>${sideText}</b>\n`;
+        msg += `Notional: <b>$${notionalFormatted}</b>\n`;
+        msg += `Price: $${Number(price).toLocaleString()}\n`;
         msg += `⏰ ${timestamp}\n`;
         
         // Add copy trading information if detected
@@ -763,7 +766,32 @@ export class AlertManager {
           msg += this.copyTradingDetector.formatCopyTradingAlert(alert, alert.copyTradingInfo);
         }
         
-        msg += `\n-- ` + this.formatTelegramLink(address, `${address.slice(0, 6)}...${address.slice(-4)}`);
+        msg += `\nWallet: ` + this.formatTelegramLink(address, `${address.slice(0, 6)}...${address.slice(-4)}`);
+        
+        return msg;
+      }
+      
+      // Special formatting for WHALE_CLOSE with color based on win/loss
+      if (alert.type === 'WHALE_CLOSE') {
+        const isWin = alert.isWin !== undefined ? alert.isWin : alert.pnl > 0;
+        const colorEmoji = isWin ? '✅' : '❌';
+        const colorCode = isWin ? '#00ff41' : '#ff4444';
+        
+        let msg = `<b style="color: ${colorCode}">${colorEmoji} Position Closed</b>\n\n`;
+        msg += `Asset: <b>${(alert.asset || '').replace(/[<>&]/g, '')}</b>\n`;
+        msg += `Side: <b>${(alert.side || '').replace(/[<>&]/g, '')}</b>\n`;
+        if (alert.notionalValue) msg += `Notional: <b>$${Number(alert.notionalValue || 0).toLocaleString()}</b>\n`;
+        if (alert.entryPrice) msg += `Entry: $${Number(alert.entryPrice || 0).toFixed(2)}\n`;
+        if (alert.pnl !== undefined) {
+          const pnlSign = alert.pnl > 0 ? '+' : '';
+          msg += `PnL: <b style="color: ${colorCode}">${pnlSign}$${Number(Math.abs(alert.pnl)).toLocaleString()}</b>\n`;
+        }
+        if (alert.address) {
+          const cleanAddress = (alert.address || '').replace(/[<>&]/g, '');
+          const wallet = `${cleanAddress.slice(0, 6)}...${cleanAddress.slice(-4)}`;
+          msg += `\nWallet: ${this.formatTelegramLink(cleanAddress, wallet)}\n`;
+        }
+        if (alert.message) msg += `\n${(alert.message || '').replace(/[<>&]/g, '')}`;
         
         return msg;
       }
