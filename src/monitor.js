@@ -106,6 +106,9 @@ class LiquidationMonitor {
     // Immediately load seed addresses from file if present
     await this.loadSeedAddressesFromFile();
 
+    // Load seed addresses from env (comma-separated)
+    this.loadSeedAddressesFromEnv();
+
     // If no addresses, start with some well-known ones or discover via API
     if (this.knownAddresses.size === 0) {
       console.log(chalk.yellow('No existing whale addresses found. Starting discovery...'));
@@ -228,6 +231,27 @@ class LiquidationMonitor {
     } catch {
       // no file, ignore
     }
+  }
+
+  /**
+   * Load seed addresses from SEED_ADDRESSES env var (comma-separated)
+   */
+  loadSeedAddressesFromEnv() {
+    try {
+      const envVal = process.env.SEED_ADDRESSES || '';
+      if (!envVal) return;
+      const parts = envVal.split(',').map(s => s.trim()).filter(Boolean);
+      let added = 0;
+      for (const addr of parts) {
+        if (addr && addr.startsWith('0x') && !this.knownAddresses.has(addr)) {
+          this.addAddress(addr);
+          added++;
+        }
+      }
+      if (added > 0) {
+        console.log(chalk.green(`🌱 Seeded ${added} addresses from SEED_ADDRESSES`));
+      }
+    } catch {}
   }
 
   /**

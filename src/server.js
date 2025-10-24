@@ -161,6 +161,29 @@ app.get('/api/followups', (req, res) => {
 });
 
 /**
+ * DB-backed liquidation metrics endpoint
+ */
+app.get('/api/metrics/liquidations', (req, res) => {
+  try {
+    const window = (req.query.window || '7m').toString();
+    const now = Date.now();
+    const match = window.match(/^(\d+)([smhd])$/);
+    let ms = 7 * 60 * 1000;
+    if (match) {
+      const val = parseInt(match[1]);
+      const unit = match[2];
+      const mult = unit === 's' ? 1000 : unit === 'm' ? 60 * 1000 : unit === 'h' ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+      ms = val * mult;
+    }
+    const since = now - ms;
+    const total = AlertsRepo.sumLiquidationsSince(since);
+    res.json({ window, since, total });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
  * Add address to monitor
  */
 app.post('/api/addresses', (req, res) => {

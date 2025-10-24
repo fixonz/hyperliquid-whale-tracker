@@ -39,6 +39,12 @@ export const AlertsRepo = {
     sql += ' ORDER BY created_at DESC LIMIT ?';
     params.push(limit);
     return db.prepare(sql).all(...params);
+  },
+
+  sumLiquidationsSince(sinceMs) {
+    const db = getDb();
+    const row = db.prepare(`SELECT COALESCE(SUM(notional), 0) as total FROM alerts WHERE type = 'LIQUIDATION' AND created_at >= ?`).get(sinceMs);
+    return row?.total || 0;
   }
 };
 

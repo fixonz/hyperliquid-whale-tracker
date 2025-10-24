@@ -51,6 +51,12 @@ export const PositionsRepo = {
   getLatest(address, asset) {
     const db = getDb();
     return db.prepare('SELECT * FROM positions WHERE id = ?').get(`${address}_${asset}`);
+  },
+
+  delete(address, asset) {
+    const db = getDb();
+    const id = `${address}_${asset}`;
+    db.prepare('DELETE FROM positions WHERE id = ?').run(id);
   }
 };
 

@@ -27,9 +27,17 @@ export class WhaleTracker {
         this.whales = new Map(Object.entries(data));
       }
 
-      if (fs.existsSync(positionsPath)) {
+      // To avoid stale positions on boot, skip loading positions.json by default.
+      // Set LOAD_POSITIONS_FILE=true to enable loading, with freshness filter (<= 2 hours).
+      if (process.env.LOAD_POSITIONS_FILE === 'true' && fs.existsSync(positionsPath)) {
         const data = JSON.parse(fs.readFileSync(positionsPath, 'utf-8'));
-        this.positions = new Map(Object.entries(data));
+        const now = Date.now();
+        const twoHours = 2 * 60 * 60 * 1000;
+        const entries = Object.entries(data).filter(([id, pos]) => {
+          const ts = Number(pos?.lastUpdated || 0);
+          return ts > 0 && (now - ts) <= twoHours;
+        });
+        this.positions = new Map(entries);
       }
     } catch (error) {
       console.error('Error loading whale data:', error.message);

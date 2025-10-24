@@ -161,7 +161,12 @@ export class HyperlensWhaleTracker {
       
       console.log(`✅ Found ${detailedWhales.length} profitable whales from Hyperlens.io`);
       
-      // Save to file
+      // Populate in-memory map and persist
+      this.whales.clear();
+      for (const w of detailedWhales) {
+        this.whales.set(w.address, w);
+      }
+      this.lastUpdate = Date.now();
       await this.saveWhales(detailedWhales);
       
       return detailedWhales;
@@ -219,15 +224,27 @@ export class HyperlensWhaleTracker {
    * Get top profitable whales
    */
   async getTopWhales(limit = 20) {
-    // If no whales loaded yet, fetch them first
+    // If no whales loaded yet, try to load from disk then fetch
     if (this.whales.size === 0) {
-      await this.fetchRealWhales();
+      const loaded = await this.loadWhales();
+      if (!loaded || loaded.length === 0) {
+        await this.fetchRealWhales();
+      }
     }
     
-    const whales = Array.from(this.whales.values())
-      .filter(whale => whale.roi > 0) // Only profitable whales
-      .sort((a, b) => b.roi - a.roi)
-      .slice(0, limit);
+    let whales = Array.from(this.whales.values());
+    if (whales.length === 0) return [];
+    
+    // Prefer profitable first, then by volume
+    whales.sort((a, b) => {
+      const roiA = Number(a.roi || 0);
+      const roiB = Number(b.roi || 0);
+      if (Math.abs(roiB - roiA) > 0.01) return roiB - roiA;
+      const volA = Number(a.totalVolume || 0);
+      const volB = Number(b.totalVolume || 0);
+      return volB - volA;
+    });
+    whales = whales.slice(0, limit);
     
     console.log(`🐋 HyperlensWhaleTracker: Returning ${whales.length} whales with real data`);
     return whales;
@@ -237,9 +254,12 @@ export class HyperlensWhaleTracker {
    * Get whale by address
    */
   async getWhale(address) {
-    // If no whales loaded yet, fetch them first
+    // If no whales loaded yet, try loading first
     if (this.whales.size === 0) {
-      await this.fetchRealWhales();
+      const loaded = await this.loadWhales();
+      if (!loaded || loaded.length === 0) {
+        await this.fetchRealWhales();
+      }
     }
     
     return this.whales.get(address);
