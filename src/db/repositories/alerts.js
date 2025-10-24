@@ -23,7 +23,7 @@ export const AlertsRepo = {
   recentBig(limit = 20) {
     const db = getDb();
     return db.prepare(`SELECT * FROM alerts WHERE type IN ('BIG_POSITION','GROUPED_BIG_POSITIONS','LIQUIDATION') ORDER BY created_at DESC LIMIT ?`).all(limit);
-  }
+  },
 
   recentByTypes(types = [], { since = null, limit = 50 } = {}) {
     if (!Array.isArray(types) || types.length === 0) return [];
